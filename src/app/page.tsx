@@ -1,69 +1,83 @@
-import Image from "next/image";
+"use client";
+
+import React from "react";
+import { Navbar } from "../components/Navbar";
+import { Hero } from "../components/Hero";
+import { FeaturedVideoSection } from "../components/FeaturedVideoSection";
+import { NewArrivalsSection } from "../components/NewArrivalsSection";
+import { ShopByCategorySection } from "../components/ShopByCategorySection";
+import { EditorialBannerSection } from "../components/EditorialBannerSection";
+import { ComingSoonSection } from "../components/ComingSoonSection";
+import { CommunitySpotlightSection } from "../components/CommunitySpotlightSection";
+import { SectionPlaceholder } from "../components/SectionPlaceholder";
+import { Footer } from "../components/Footer";
 
 export default function Home() {
+  const scrollToSection = (sectionId: string) => {
+    const element = document.getElementById(sectionId);
+    if (element) {
+      element.scrollIntoView({ behavior: "smooth" });
+    }
+  };
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
+    <main className="min-h-screen flex flex-col bg-white text-black">
+      {/* Top Fixed Navbar */}
+      <Navbar onNavClick={scrollToSection} />
+
+      {/* Hero Section with Video Background */}
+      <Hero videoSrc="/hero1.mp4" onExploreClick={() => scrollToSection("shop")} />
+
+      {/* Featured Video Section (Left Video + Minimal Authentic Text on Right) */}
+      <FeaturedVideoSection videoSrc="/hero2.mp4" onCtaClick={() => scrollToSection("brand")} />
+
+      {/* New Arrivals Section (3-Product Swipe Slider with Dual Image Hover Effect) */}
+      <NewArrivalsSection />
+
+      {/* Shop By Category Section (3 Category Cards with Boxed Overlay Buttons) */}
+      <ShopByCategorySection onCategoryClick={() => scrollToSection("shop")} />
+
+      {/* Editorial Background Image Banner Section */}
+      <EditorialBannerSection />
+
+      {/* Coming Soon Section (4 Products in One Row Swipe Carousel) */}
+      <ComingSoonSection />
+
+      {/* Community Spotlight Section (5 Instagram Lookbook Cards with Floating Arrow) */}
+      <CommunitySpotlightSection />
+
+      {/* Section Placeholders as requested */}
+      <div className="flex flex-col">
+        {/* BRAND / ABOUT US Section Placeholder */}
+        <SectionPlaceholder
+          id="brand"
+          title="ABOUT US & BRAND STORY"
+          subtitle="OUR ETHOS"
+          description="This is About Us section"
+          bgVariant="light"
         />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
-        </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
-        </div>
-      </main>
-    </div>
+
+        {/* SALE Section Placeholder */}
+        <SectionPlaceholder
+          id="sale"
+          title="ARCHIVE & SALE"
+          subtitle="LIMITED TIMEFRAME"
+          description="This is Sale section"
+          bgVariant="light"
+        />
+
+        {/* INFO Section Placeholder */}
+        <SectionPlaceholder
+          id="info"
+          title="INFO & CUSTOMER CARE"
+          subtitle="SUPPORT & INQUIRIES"
+          description="This is Info section"
+          bgVariant="white"
+        />
+      </div>
+
+      {/* Footer */}
+      <Footer />
+    </main>
   );
 }
