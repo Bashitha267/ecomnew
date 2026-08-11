@@ -17,7 +17,7 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 const AUD_TO_LKR_RATE = 210.5;
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currency, setCurrency] = useState<Currency>("AUD");
+  const [currency, setCurrency] = useState<Currency>("LKR");
 
   const formatPrice = (priceInAUD: number): string => {
     if (currency === "LKR") {

@@ -9,7 +9,7 @@ import { ShopByCategorySection } from "../components/ShopByCategorySection";
 import { EditorialBannerSection } from "../components/EditorialBannerSection";
 import { ComingSoonSection } from "../components/ComingSoonSection";
 import { CommunitySpotlightSection } from "../components/CommunitySpotlightSection";
-import { SectionPlaceholder } from "../components/SectionPlaceholder";
+import { ValuePropsSection } from "../components/ValuePropsSection";
 import { Footer } from "../components/Footer";
 
 export default function Home() {
@@ -29,7 +29,7 @@ export default function Home() {
       <Hero videoSrc="/hero1.mp4" onExploreClick={() => scrollToSection("shop")} />
 
       {/* Featured Video Section (Left Video + Minimal Authentic Text on Right) */}
-      <FeaturedVideoSection videoSrc="/hero2.mp4" onCtaClick={() => scrollToSection("brand")} />
+      <FeaturedVideoSection videoSrc="/hero2.mp4" onCtaClick={() => scrollToSection("shop")} />
 
       {/* New Arrivals Section (3-Product Swipe Slider with Dual Image Hover Effect) */}
       <NewArrivalsSection />
@@ -37,7 +37,7 @@ export default function Home() {
       {/* Shop By Category Section (3 Category Cards with Boxed Overlay Buttons) */}
       <ShopByCategorySection onCategoryClick={() => scrollToSection("shop")} />
 
-      {/* Editorial Background Image Banner Section */}
+      {/* Editorial Background Image Banner Section (Fullscreen Height & Width) */}
       <EditorialBannerSection />
 
       {/* Coming Soon Section (4 Products in One Row Swipe Carousel) */}
@@ -46,35 +46,8 @@ export default function Home() {
       {/* Community Spotlight Section (5 Instagram Lookbook Cards with Floating Arrow) */}
       <CommunitySpotlightSection />
 
-      {/* Section Placeholders as requested */}
-      <div className="flex flex-col">
-        {/* BRAND / ABOUT US Section Placeholder */}
-        <SectionPlaceholder
-          id="brand"
-          title="ABOUT US & BRAND STORY"
-          subtitle="OUR ETHOS"
-          description="This is About Us section"
-          bgVariant="light"
-        />
-
-        {/* SALE Section Placeholder */}
-        <SectionPlaceholder
-          id="sale"
-          title="ARCHIVE & SALE"
-          subtitle="LIMITED TIMEFRAME"
-          description="This is Sale section"
-          bgVariant="light"
-        />
-
-        {/* INFO Section Placeholder */}
-        <SectionPlaceholder
-          id="info"
-          title="INFO & CUSTOMER CARE"
-          subtitle="SUPPORT & INQUIRIES"
-          description="This is Info section"
-          bgVariant="white"
-        />
-      </div>
+      {/* Value Props & Features Bar Section (4 Columns: Returns, Shipping, Buy Now Pay Later, Worldwide) */}
+      <ValuePropsSection />
 
       {/* Footer */}
       <Footer />
