@@ -78,8 +78,7 @@ export const Footer: React.FC = () => {
 
       {/* Copyright */}
       <div className="max-w-[1700px] mx-auto pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-neutral-500 font-mono tracking-wider">
-        <p>© 2026 CARLTON VALLEY. All rights reserved.</p>
-        <p className="mt-2 sm:mt-0">Designed for Next.js & Tailwind CSS</p>
+        <p>© 2026 CARLTON VALLEY. All rights reserved by Matrix.</p>
       </div>
     </footer>
   );
