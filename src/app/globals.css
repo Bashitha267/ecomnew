@@ -96,3 +96,31 @@ body {
 .animate-scaleUp {
   animation: scaleUp 0.25s ease-out forwards;
 }
+
+/* Fix browser autofill light blue box on dark inputs */
+input:-webkit-autofill,
+input:-webkit-autofill:hover, 
+input:-webkit-autofill:focus, 
+input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px rgba(18, 18, 18, 0.92) inset !important;
+  -webkit-text-fill-color: #ffffff !important;
+  caret-color: #ffffff !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
+/* Luxury Font Classes */
+.font-italiana {
+  font-family: 'Italiana', serif;
+}
+
+.font-cinzel {
+  font-family: 'Cinzel', serif;
+}
+
+.font-cormorant {
+  font-family: 'Cormorant Garamond', 'Playfair Display', serif;
+}
+
+.font-bodoni {
+  font-family: 'Bodoni Moda', 'Playfair Display', serif;
+}

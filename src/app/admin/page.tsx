@@ -2,8 +2,10 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useStore } from "../../context/StoreContext";
 import { useCurrency } from "../../context/CurrencyContext";
+import { useAuth } from "../../context/AuthContext";
 import {
   FullProduct,
   ProductColorVariant,
@@ -50,11 +52,14 @@ import {
   Flame,
   Download,
   TrendingDown,
+  LogOut,
 } from "lucide-react";
 
 const ALL_SIZES: ProductSize[] = ["XS", "S", "M", "L", "XL", "2XL"];
 
 export default function AdminPage() {
+  const router = useRouter();
+  const { user, logout } = useAuth();
   const {
     products,
     categories,
@@ -770,11 +775,26 @@ export default function AdminPage() {
               <span>View Shop Catalog</span>
               <ArrowUpRight size={13} />
             </Link>
-            <div className="flex items-center space-x-2 border-l border-neutral-800 pl-4">
-              <div className="w-7 h-7 rounded-full bg-neutral-700 text-white flex items-center justify-center font-bold text-xs uppercase">
-                CV
+            <div className="flex items-center space-x-3 border-l border-neutral-800 pl-4">
+              <div className="flex items-center space-x-2">
+                <div className="w-7 h-7 rounded-full bg-emerald-950 text-emerald-400 border border-emerald-800 flex items-center justify-center font-bold text-xs uppercase">
+                  {user?.name?.charAt(0) || "A"}
+                </div>
+                <div className="hidden md:block text-left">
+                  <div className="text-neutral-200 font-medium leading-tight">{user?.name || "Admin"}</div>
+                  <div className="text-[10px] text-neutral-500 font-mono">Master Administrator</div>
+                </div>
               </div>
-              <span className="hidden md:inline text-neutral-300 font-medium">Administrator</span>
+              <button
+                onClick={() => {
+                  logout();
+                  router.push("/login");
+                }}
+                className="text-neutral-400 hover:text-red-400 p-1.5 rounded hover:bg-neutral-800 transition-colors"
+                title="Sign Out"
+              >
+                <LogOut size={15} />
+              </button>
             </div>
           </div>
         </header>

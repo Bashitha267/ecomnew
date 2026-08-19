@@ -4,7 +4,23 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useCurrency, Currency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
-import { User, Search, ShoppingBag, ChevronDown, Menu, X, Check, Trash2, Plus, Minus, ArrowRight, Shield } from "lucide-react";
+import { useAuth } from "../context/AuthContext";
+import {
+  User,
+  Search,
+  ShoppingBag,
+  ChevronDown,
+  Menu,
+  X,
+  Check,
+  Trash2,
+  Plus,
+  Minus,
+  ArrowRight,
+  Shield,
+  LogOut,
+  Sparkles,
+} from "lucide-react";
 
 interface NavbarProps {
   onNavClick?: (sectionId: string) => void;
@@ -13,8 +29,10 @@ interface NavbarProps {
 export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
   const { currency, setCurrency, formatPrice } = useCurrency();
   const { cart, removeFromCart, updateCartQuantity, products } = useStore();
+  const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
+  const [isUserDropdownOpen, setIsUserDropdownOpen] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const [isCartOpen, setIsCartOpen] = useState(false);
@@ -59,8 +77,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
           <div className="flex items-center md:hidden">
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-              className={`p-1.5 hover:opacity-70 transition-opacity ${scrolled ? "text-black" : "text-white"}`}
-              aria-label="Toggle Navigation Menu"
+              className={`p-1.5 focus:outline-none ${scrolled ? "text-black" : "text-white"}`}
+              aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
             </button>
@@ -129,8 +147,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
             {/* Currency Selector */}
             <div className="relative hidden md:block">
               <button
-                onClick={() => setIsCurrencyOpen(!isCurrencyOpen)}
-                className={`flex items-center space-x-1 tracking-wider text-xs md:text-[13px] font-medium transition-opacity py-1 px-1 ${
+                onClick={() => {
+                  setIsCurrencyOpen(!isCurrencyOpen);
+                  setIsUserDropdownOpen(false);
+                }}
+                className={`flex items-center space-x-1 tracking-wider text-xs md:text-[13px] font-medium transition-opacity py-1 px-1 cursor-pointer ${
                   scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-80"
                 }`}
                 aria-expanded={isCurrencyOpen}
@@ -170,22 +191,93 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
               )}
             </div>
 
-            {/* Admin Panel Direct Link */}
-            <Link
-              href="/admin/login"
-              className={`p-1 transition-opacity hidden sm:flex items-center space-x-1 text-xs uppercase font-mono ${
-                scrolled ? "text-neutral-600 hover:text-black" : "text-neutral-300 hover:text-white"
-              }`}
-              title="Admin Portal Login"
-            >
-              <Shield size={16} />
-              <span className="hidden lg:inline">Admin</span>
-            </Link>
+            {/* User Account / Profile Display (Displays User Name in Header) */}
+            <div className="relative">
+              {isAuthenticated && user ? (
+                <div className="relative">
+                  <button
+                    onClick={() => {
+                      setIsUserDropdownOpen(!isUserDropdownOpen);
+                      setIsCurrencyOpen(false);
+                    }}
+                    className={`flex items-center space-x-1.5 py-1 px-1.5 rounded transition-colors text-xs font-sans cursor-pointer ${
+                      scrolled
+                        ? "text-neutral-800 hover:bg-neutral-100"
+                        : "text-white hover:bg-white/10"
+                    }`}
+                  >
+                    <div className="w-5 h-5 rounded-full bg-neutral-800 text-white border border-neutral-600 flex items-center justify-center text-[10px] font-bold uppercase">
+                      {user.name.charAt(0)}
+                    </div>
+                    <span className="font-serif tracking-wide hidden sm:inline max-w-[120px] truncate font-medium">
+                      Hi, {user.name}
+                    </span>
+                    <ChevronDown size={12} className={`transition-transform duration-200 ${isUserDropdownOpen ? "rotate-180" : ""}`} />
+                  </button>
+
+                  {/* User Profile Dropdown Menu */}
+                  {isUserDropdownOpen && (
+                    <div className="absolute right-0 mt-2 w-52 bg-white text-black border border-neutral-200 shadow-2xl rounded-sm py-2 z-50 text-xs font-sans animate-fadeIn">
+                      <div className="px-4 py-2 border-b border-neutral-100">
+                        <div className="font-serif font-bold text-neutral-900 truncate text-sm">{user.name}</div>
+                        <div className="font-mono text-[10px] text-neutral-500 truncate">{user.email}</div>
+                        <div className="mt-1.5 inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[9px] font-mono uppercase font-bold tracking-wider bg-neutral-100 text-neutral-800">
+                          {isAdmin ? "Administrator" : "Client Member"}
+                        </div>
+                      </div>
+
+                      {/* Admin panel quick link if admin */}
+                      {isAdmin && (
+                        <Link
+                          href="/admin"
+                          onClick={() => setIsUserDropdownOpen(false)}
+                          className="w-full text-left px-4 py-2.5 flex items-center space-x-2 text-emerald-800 bg-emerald-50/70 hover:bg-emerald-100/70 font-semibold transition-colors"
+                        >
+                          <Shield size={14} />
+                          <span>Admin Control Panel</span>
+                        </Link>
+                      )}
+
+                      <Link
+                        href="/shop"
+                        onClick={() => setIsUserDropdownOpen(false)}
+                        className="w-full text-left px-4 py-2 flex items-center space-x-2 text-neutral-700 hover:bg-neutral-50 transition-colors"
+                      >
+                        <ShoppingBag size={14} />
+                        <span>Explore Collection</span>
+                      </Link>
+
+                      <button
+                        onClick={() => {
+                          logout();
+                          setIsUserDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-red-600 hover:bg-red-50 flex items-center space-x-2 transition-colors border-t border-neutral-100 mt-1 cursor-pointer"
+                      >
+                        <LogOut size={14} />
+                        <span>Sign Out</span>
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  className={`flex items-center space-x-1.5 p-1 transition-opacity text-xs font-serif tracking-wider uppercase ${
+                    scrolled ? "text-neutral-800 hover:opacity-60" : "text-white hover:opacity-80"
+                  }`}
+                  title="Sign In / Client Gateway"
+                >
+                  <User size={18} strokeWidth={1.5} />
+                  <span className="hidden lg:inline text-[11px] font-mono">Sign In</span>
+                </Link>
+              )}
+            </div>
 
             {/* Search Icon */}
             <button
               onClick={() => setIsSearchOpen(true)}
-              className={`p-1 transition-opacity ${scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-75"}`}
+              className={`p-1 transition-opacity cursor-pointer ${scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-75"}`}
               title="Search"
               aria-label="Search"
             >
@@ -195,7 +287,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
             {/* Cart Icon */}
             <button
               onClick={() => setIsCartOpen(true)}
-              className={`p-1 transition-opacity relative ${scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-75"}`}
+              className={`p-1 transition-opacity relative cursor-pointer ${scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-75"}`}
               title="Shopping Bag"
               aria-label="Shopping Bag"
             >
@@ -215,6 +307,23 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
             scrolled ? "bg-white text-black border-neutral-100" : "bg-black/95 text-white border-white/10 backdrop-blur-md"
           }`}>
             <nav className="flex flex-col space-y-4 text-center font-serif text-sm tracking-[0.2em]">
+              
+              {/* Logged in User Greeting on Mobile */}
+              {isAuthenticated && user ? (
+                <div className="pb-3 mb-2 border-b border-neutral-500/20 text-center font-sans space-y-1">
+                  <div className="text-xs font-serif uppercase tracking-widest text-neutral-400">Signed in as</div>
+                  <div className="text-sm font-serif font-bold text-emerald-400">{user.name}</div>
+                </div>
+              ) : (
+                <Link
+                  href="/login"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="py-2.5 text-neutral-300 hover:opacity-60 transition-opacity border-b border-neutral-500/20 uppercase font-mono text-xs"
+                >
+                  SIGN IN / CLIENT PORTAL
+                </Link>
+              )}
+
               <Link
                 href="/shop"
                 onClick={() => setIsMobileMenuOpen(false)}
@@ -250,13 +359,30 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
               >
                 COMING SOON
               </Link>
-              <Link
-                href="/admin"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="py-2.5 text-emerald-400 hover:opacity-60 transition-opacity font-mono text-xs uppercase"
-              >
-                ADMIN DASHBOARD
-              </Link>
+              
+              {/* Show admin link if logged in as admin */}
+              {isAdmin && (
+                <Link
+                  href="/admin"
+                  onClick={() => setIsMobileMenuOpen(false)}
+                  className="py-2.5 text-emerald-400 hover:opacity-60 transition-opacity font-mono text-xs uppercase"
+                >
+                  ADMIN DASHBOARD
+                </Link>
+              )}
+
+              {/* Logout button on mobile */}
+              {isAuthenticated && (
+                <button
+                  onClick={() => {
+                    logout();
+                    setIsMobileMenuOpen(false);
+                  }}
+                  className="py-2.5 text-red-400 hover:opacity-60 transition-opacity font-mono text-xs uppercase"
+                >
+                  SIGN OUT
+                </button>
+              )}
             </nav>
 
             {/* Currency in Mobile Menu */}

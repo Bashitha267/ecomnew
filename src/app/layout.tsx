@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 import { CurrencyProvider } from "../context/CurrencyContext";
 import { StoreProvider } from "../context/StoreContext";
+import { AuthProvider } from "../context/AuthContext";
 
 export const metadata: Metadata = {
   title: "CARLTON VALLEY | High Fashion & Contemporary Wear",
@@ -16,11 +17,13 @@ export default function RootLayout({
   return (
     <html lang="en" className="scroll-smooth">
       <body className="min-h-screen bg-white text-black antialiased">
-        <StoreProvider>
-          <CurrencyProvider>
-            {children}
-          </CurrencyProvider>
-        </StoreProvider>
+        <AuthProvider>
+          <StoreProvider>
+            <CurrencyProvider>
+              {children}
+            </CurrencyProvider>
+          </StoreProvider>
+        </AuthProvider>
       </body>
     </html>
   );

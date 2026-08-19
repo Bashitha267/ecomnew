@@ -33,10 +33,10 @@ export const Footer: React.FC = () => {
             <li><Link href="/shop" className="hover:text-neutral-400 transition-colors uppercase">Categories</Link></li>
             <li>
               <Link
-                href="/admin/login"
+                href="/login"
                 className="inline-flex items-center space-x-1.5 text-neutral-400 hover:text-white transition-colors uppercase font-mono text-[11px]"
               >
-                <span>Admin Login</span>
+                <span>Account / Sign In</span>
               </Link>
             </li>
           </ul>
@@ -86,12 +86,12 @@ export const Footer: React.FC = () => {
         </div>
       </div>
 
-      {/* Copyright & Admin Link */}
+      {/* Copyright & Account Link */}
       <div className="max-w-[1700px] mx-auto pt-8 flex flex-col sm:flex-row justify-between items-center text-xs text-neutral-500 font-mono tracking-wider gap-3">
         <p>© 2026 CARLTON VALLEY. All rights reserved by Matrix.</p>
         <div className="flex items-center space-x-4">
-          <Link href="/admin/login" className="hover:text-neutral-300 transition-colors">
-            Staff Portal • Admin Login
+          <Link href="/login" className="hover:text-neutral-300 transition-colors">
+            Client & Staff Portal
           </Link>
         </div>
       </div>

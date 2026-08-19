@@ -3,10 +3,12 @@
 import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
+import { useAuth } from "../../../context/AuthContext";
 import { Shield, Lock, User, Eye, EyeOff, ArrowRight, ArrowLeft, CheckCircle2, AlertCircle, KeyRound } from "lucide-react";
 
 export default function AdminLoginPage() {
   const router = useRouter();
+  const { login } = useAuth();
   const [username, setUsername] = useState("admin");
   const [password, setPassword] = useState("admin123");
   const [showPassword, setShowPassword] = useState(false);
@@ -22,20 +24,20 @@ export default function AdminLoginPage() {
     setIsLoading(true);
 
     setTimeout(() => {
-      // Validate credentials (username: admin, password: admin123)
-      if (username.trim() === "admin" && password === "admin123") {
+      const result = login(username, password);
+
+      if (result.role === "admin") {
         setSuccessMessage("Authentication successful. Redirecting to Admin Dashboard...");
-        try {
-          localStorage.setItem("carlton_admin_auth", JSON.stringify({ authenticated: true, timestamp: Date.now() }));
-        } catch (err) {}
         setTimeout(() => {
           router.push("/admin");
-        }, 800);
+        }, 600);
       } else {
-        setIsLoading(false);
-        setErrorMessage("Invalid username or password. Demo credentials: username: admin / password: admin123");
+        setSuccessMessage(`Signed in as ${result.name}. Redirecting...`);
+        setTimeout(() => {
+          router.push("/");
+        }, 600);
       }
-    }, 600);
+    }, 500);
   };
 
   const handleQuickFill = () => {
