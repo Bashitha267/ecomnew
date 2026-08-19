@@ -102,14 +102,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
             >
               BRAND
             </Link>
-            <Link
-              href="/shop"
-              className={`transition-opacity duration-200 uppercase ${
-                scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-75 drop-shadow-xs"
-              }`}
-            >
-              CATEGORIES
-            </Link>
+
             <Link
               href="/#new-arrivals"
               className={`transition-opacity duration-200 uppercase ${
@@ -338,13 +331,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
               >
                 ABOUT THE BRAND
               </Link>
-              <Link
-                href="/shop"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className="py-2.5 hover:opacity-60 transition-opacity border-b border-neutral-500/20 uppercase"
-              >
-                CATEGORIES
-              </Link>
+
               <Link
                 href="/#new-arrivals"
                 onClick={() => setIsMobileMenuOpen(false)}
