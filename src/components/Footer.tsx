@@ -1,6 +1,7 @@
 "use client";
 
 import React from "react";
+import Link from "next/link";
 import { useCurrency } from "../context/CurrencyContext";
 
 export const Footer: React.FC = () => {
@@ -12,9 +13,11 @@ export const Footer: React.FC = () => {
         
         {/* Brand Info */}
         <div className="space-y-4 md:col-span-1">
-          <h3 className="text-2xl font-extrabold tracking-[0.2em] font-display uppercase">
-            CARLTON VALLEY
-          </h3>
+          <Link href="/" className="block">
+            <h3 className="text-2xl font-extrabold tracking-[0.2em] font-display uppercase">
+              CARLTON VALLEY
+            </h3>
+          </Link>
           <p className="text-xs text-neutral-400 leading-relaxed font-light tracking-wide max-w-xs">
             High fashion e-commerce experience tailored with modern aesthetics, fluid responsive layouts, and dual currency options (AUD / LKR).
           </p>
@@ -24,11 +27,11 @@ export const Footer: React.FC = () => {
         <div className="space-y-3 text-xs tracking-[0.2em] font-serif">
           <h4 className="text-neutral-500 uppercase font-mono tracking-widest text-[11px] mb-4">Navigation</h4>
           <ul className="space-y-2.5">
-            <li><a href="#shop" className="hover:text-neutral-400 transition-colors uppercase">Shop Collection</a></li>
-            <li><a href="#brand" className="hover:text-neutral-400 transition-colors uppercase">About Us / Brand</a></li>
-            <li><a href="#coming-soon" className="hover:text-neutral-400 transition-colors uppercase">Coming Soon</a></li>
-            <li><a href="#sale" className="hover:text-neutral-400 transition-colors uppercase">Sale</a></li>
-            <li><a href="#info" className="hover:text-neutral-400 transition-colors uppercase">Info & Support</a></li>
+            <li><Link href="/shop" className="hover:text-neutral-400 transition-colors uppercase">Shop Collection</Link></li>
+            <li><Link href="/brand" className="hover:text-neutral-400 transition-colors uppercase">About Us / Brand</Link></li>
+            <li><Link href="/#coming-soon" className="hover:text-neutral-400 transition-colors uppercase">Coming Soon</Link></li>
+            <li><Link href="/shop" className="hover:text-neutral-400 transition-colors uppercase">Categories</Link></li>
+            <li><Link href="/admin" className="hover:text-neutral-400 transition-colors uppercase font-mono text-[11px] text-emerald-400">Admin Control</Link></li>
           </ul>
         </div>
 
