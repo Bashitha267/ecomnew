@@ -172,11 +172,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
 
             {/* Admin Panel Direct Link */}
             <Link
-              href="/admin"
+              href="/admin/login"
               className={`p-1 transition-opacity hidden sm:flex items-center space-x-1 text-xs uppercase font-mono ${
                 scrolled ? "text-neutral-600 hover:text-black" : "text-neutral-300 hover:text-white"
               }`}
-              title="Admin Control Panel"
+              title="Admin Portal Login"
             >
               <Shield size={16} />
               <span className="hidden lg:inline">Admin</span>
