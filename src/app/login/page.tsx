@@ -37,47 +37,52 @@ export default function LoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
     setIsLoading(true);
 
-    setTimeout(() => {
-      if (!usernameOrEmail.trim()) {
-        setIsLoading(false);
-        setErrorMessage("Please enter your email address or username.");
-        return;
-      }
+    if (!usernameOrEmail.trim()) {
+      setIsLoading(false);
+      setErrorMessage("Please enter your email address or username.");
+      return;
+    }
 
-      if (mode === "signup" && !fullName.trim()) {
-        setIsLoading(false);
-        setErrorMessage("Please enter your full name.");
-        return;
-      }
+    if (mode === "signup" && !fullName.trim()) {
+      setIsLoading(false);
+      setErrorMessage("Please enter your full name.");
+      return;
+    }
 
-      const result = login(usernameOrEmail, password, fullName, {
-        phone: phone.trim(),
-        address: address.trim(),
-      });
+    const result = await login(usernameOrEmail, password, fullName, {
+      phone: phone.trim(),
+      address: address.trim(),
+    });
 
-      if (result.role === "admin") {
-        setSuccessMessage("Welcome, Administrator. Entering Atelier Control...");
-        setTimeout(() => {
-          router.push("/admin");
-        }, 500);
-      } else {
-        setSuccessMessage(
-          mode === "signup"
-            ? `Welcome to Carlton Valley Atelier, ${result.name}. Profile created.`
-            : `Welcome back, ${result.name}. Loading boutique...`
-        );
-        setTimeout(() => {
-          router.push("/");
-        }, 500);
-      }
-    }, 450);
+    if (!result.success) {
+      setErrorMessage(result.error || "Invalid credentials. Please try again.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (result.role === "admin") {
+      setSuccessMessage("Welcome, Administrator. Entering Atelier Control...");
+      setTimeout(() => {
+        router.push("/admin");
+      }, 500);
+    } else {
+      setSuccessMessage(
+        mode === "signup"
+          ? `Welcome to Carlton Valley Atelier, ${result.name}. Profile created.`
+          : `Welcome back, ${result.name}. Loading boutique...`
+      );
+      setTimeout(() => {
+        router.push("/");
+      }, 500);
+    }
   };
+
 
   return (
     <div className="relative min-h-screen text-white font-sans antialiased flex flex-col justify-between selection:bg-white selection:text-black overflow-x-hidden">

@@ -539,12 +539,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                 <p className="text-[11px] text-neutral-500 text-center font-sans">
                   Taxes and shipping calculated at checkout
                 </p>
-                <button
-                  onClick={() => alert("Proceeding to secure checkout...")}
-                  className="w-full bg-black text-white py-3.5 uppercase tracking-[0.2em] text-xs font-bold hover:bg-neutral-800 transition-colors"
+                <Link
+                  href="/checkout"
+                  onClick={() => setIsCartOpen(false)}
+                  className="block w-full bg-black text-white text-center py-3.5 uppercase tracking-[0.2em] text-xs font-bold hover:bg-neutral-800 transition-colors"
                 >
-                  Checkout
-                </button>
+                  Proceed to Checkout
+                </Link>
               </div>
             )}
           </div>

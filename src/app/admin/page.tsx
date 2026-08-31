@@ -16,6 +16,7 @@ import {
   ShippingSection,
   DEFAULT_SHIPPING_SECTIONS,
 } from "../../data/data";
+import { RegionalOrderMap } from "../../components/admin/RegionalOrderMap";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -995,6 +996,9 @@ export default function AdminPage() {
                   </div>
                 </div>
               </div>
+
+              {/* Geographic Regional Order Heatmaps (Sri Lanka 9 Provinces & Australia 8 States) */}
+              <RegionalOrderMap orders={orders} formatPrice={formatPrice} />
             </div>
           )}
 
@@ -1053,6 +1057,12 @@ export default function AdminPage() {
                           <td className="py-4 px-4">
                             <div className="font-medium text-white">{order.customerName}</div>
                             <div className="text-[11px] text-neutral-400">{order.customerEmail}</div>
+                            {order.country && (
+                              <div className="text-[10px] text-emerald-400/90 font-mono mt-0.5 flex items-center gap-1">
+                                <span>{order.country === "Sri Lanka" ? "🇱🇰" : "🇦🇺"}</span>
+                                <span>{order.district ? `${order.district}, ` : ""}{order.country}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-4 px-4">
                             <div className="flex -space-x-2 overflow-hidden">
@@ -2706,10 +2716,23 @@ export default function AdminPage() {
               </div>
 
               <div>
-                <span className="text-neutral-400 uppercase text-[10px] block mb-1">Shipping Address</span>
-                <p className="bg-neutral-950 p-2.5 rounded border border-neutral-800 text-neutral-300 font-mono text-[11px]">
-                  {selectedOrder.shippingAddress}
-                </p>
+                <span className="text-neutral-400 uppercase text-[10px] block mb-1">Shipping Destination</span>
+                <div className="bg-neutral-950 p-2.5 rounded border border-neutral-800 space-y-1">
+                  {selectedOrder.country && (
+                    <div className="text-emerald-400 font-semibold text-[11px] flex items-center gap-1.5">
+                      <span>{selectedOrder.country === "Sri Lanka" ? "🇱🇰" : "🇦🇺"}</span>
+                      <span>{selectedOrder.country} • {selectedOrder.district || "Standard District"}</span>
+                    </div>
+                  )}
+                  <p className="text-neutral-300 font-mono text-[11px]">
+                    {selectedOrder.shippingAddress}
+                  </p>
+                  {selectedOrder.customerPhone && (
+                    <p className="text-neutral-400 text-[10px] font-mono">
+                      Phone: {selectedOrder.customerPhone}
+                    </p>
+                  )}
+                </div>
               </div>
 
               <div>

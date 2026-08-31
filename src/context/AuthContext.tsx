@@ -1,6 +1,7 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from "react";
+import { authApi, tokenStore, getApiError } from "../lib/api";
 
 export interface AuthUser {
   id: string;
@@ -17,91 +18,120 @@ interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
+  isLoading: boolean;
   login: (
-    usernameOrEmail: string,
-    password?: string,
+    emailOrUsername: string,
+    password: string,
     fullName?: string,
     extraData?: { phone?: string; address?: string }
-  ) => { success: boolean; role: "admin" | "customer"; name: string };
-  logout: () => void;
+  ) => Promise<{ success: boolean; role: "admin" | "customer"; name: string; error?: string }>;
+  register: (data: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    address?: string;
+  }) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-const AUTH_STORAGE_KEY = "carlton_valley_auth_user_v1";
+const USER_CACHE_KEY = "cv_user_cache";
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
-  const [isHydrated, setIsHydrated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
+  // On mount: restore cached user + validate token
   useEffect(() => {
-    try {
-      const savedUser = localStorage.getItem(AUTH_STORAGE_KEY);
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
+    const restoreSession = async () => {
+      try {
+        const cachedUser = localStorage.getItem(USER_CACHE_KEY);
+        if (cachedUser) {
+          setUser(JSON.parse(cachedUser));
+        }
+
+        // If we have a token, verify it's still valid
+        const token = tokenStore.getAccess();
+        if (token) {
+          const { data } = await authApi.me();
+          if (data.success) {
+            setUser(data.user);
+            localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
+          }
+        }
+      } catch {
+        // Token invalid — clear everything
+        tokenStore.clear();
+        localStorage.removeItem(USER_CACHE_KEY);
+        setUser(null);
+      } finally {
+        setIsLoading(false);
       }
-    } catch (e) {
-      console.warn("Could not load auth state:", e);
-    } finally {
-      setIsHydrated(true);
-    }
-  }, []);
-
-  useEffect(() => {
-    if (!isHydrated) return;
-    try {
-      if (user) {
-        localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
-      } else {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-      }
-    } catch (e) {}
-  }, [user, isHydrated]);
-
-  const login = (
-    usernameOrEmail: string,
-    password = "",
-    fullName = "",
-    extraData?: { phone?: string; address?: string }
-  ): { success: boolean; role: "admin" | "customer"; name: string } => {
-    const cleanInput = usernameOrEmail.trim().toLowerCase();
-
-    // Check if logging in as admin
-    if (cleanInput === "admin" || cleanInput === "admin@carltonvalley.com" || cleanInput === "admin@parknoire.com") {
-      const adminUser: AuthUser = {
-        id: "usr-admin-1",
-        name: "Admin",
-        username: "admin",
-        email: "admin@carltonvalley.com",
-        role: "admin",
-      };
-      setUser(adminUser);
-      return { success: true, role: "admin", name: "Admin" };
-    }
-
-    // Otherwise regular customer login
-    const displayName = fullName.trim() || usernameOrEmail.split("@")[0] || "Customer";
-    const formattedName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
-
-    const customerUser: AuthUser = {
-      id: "usr-" + Date.now(),
-      name: formattedName,
-      username: cleanInput,
-      email: usernameOrEmail.includes("@") ? usernameOrEmail : `${cleanInput}@client.com`,
-      phone: extraData?.phone || "",
-      address: extraData?.address || "",
-      role: "customer",
     };
 
-    setUser(customerUser);
-    return { success: true, role: "customer", name: formattedName };
+    restoreSession();
+  }, []);
+
+  const login = async (
+    emailOrUsername: string,
+    password: string,
+    _fullName = "",
+    _extraData?: { phone?: string; address?: string }
+  ): Promise<{ success: boolean; role: "admin" | "customer"; name: string; error?: string }> => {
+    try {
+      const { data } = await authApi.login(emailOrUsername, password);
+
+      if (data.success) {
+        tokenStore.setAccess(data.accessToken);
+        tokenStore.setRefresh(data.refreshToken);
+        setUser(data.user);
+        localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
+        return { success: true, role: data.user.role, name: data.user.name };
+      }
+
+      return { success: false, role: "customer", name: "", error: "Login failed" };
+    } catch (err) {
+      const error = getApiError(err);
+      return { success: false, role: "customer", name: "", error };
+    }
   };
 
-  const logout = () => {
-    setUser(null);
+  const register = async (formData: {
+    name: string;
+    email: string;
+    password: string;
+    phone?: string;
+    address?: string;
+  }): Promise<{ success: boolean; error?: string }> => {
     try {
-      localStorage.removeItem(AUTH_STORAGE_KEY);
-    } catch (e) {}
+      const { data } = await authApi.register(formData);
+
+      if (data.success) {
+        tokenStore.setAccess(data.accessToken);
+        tokenStore.setRefresh(data.refreshToken);
+        setUser(data.user);
+        localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
+        return { success: true };
+      }
+
+      return { success: false, error: "Registration failed" };
+    } catch (err) {
+      return { success: false, error: getApiError(err) };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await authApi.logout();
+    } catch {
+      // Ignore logout API errors — clean up locally regardless
+    } finally {
+      tokenStore.clear();
+      localStorage.removeItem(USER_CACHE_KEY);
+      setUser(null);
+    }
   };
 
   const isAuthenticated = !!user;
@@ -113,7 +143,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         user,
         isAuthenticated,
         isAdmin,
+        isLoading,
         login,
+        register,
         logout,
       }}
     >

@@ -104,6 +104,8 @@ export interface Order {
   status: "Pending" | "Processing" | "Shipped" | "Delivered" | "Cancelled";
   items: OrderItem[];
   shippingAddress: string;
+  country?: string;
+  district?: string;
   paymentMethod: string;
   trackingNumber?: string;
 }

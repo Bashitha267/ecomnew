@@ -17,27 +17,29 @@ export default function AdminLoginPage() {
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setErrorMessage("");
     setSuccessMessage("");
     setIsLoading(true);
 
-    setTimeout(() => {
-      const result = login(username, password);
+    const result = await login(username, password);
 
-      if (result.role === "admin") {
-        setSuccessMessage("Authentication successful. Redirecting to Admin Dashboard...");
-        setTimeout(() => {
-          router.push("/admin");
-        }, 600);
-      } else {
-        setSuccessMessage(`Signed in as ${result.name}. Redirecting...`);
-        setTimeout(() => {
-          router.push("/");
-        }, 600);
-      }
-    }, 500);
+    if (!result.success) {
+      setErrorMessage(result.error || "Invalid credentials. Please try again.");
+      setIsLoading(false);
+      return;
+    }
+
+    if (result.role === "admin") {
+      setSuccessMessage("Authentication successful. Redirecting to Admin Dashboard...");
+      setTimeout(() => {
+        router.push("/admin");
+      }, 600);
+    } else {
+      setErrorMessage("Access denied. This portal is for administrators only.");
+      setIsLoading(false);
+    }
   };
 
   const handleQuickFill = () => {

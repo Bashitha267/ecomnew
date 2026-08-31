@@ -1,0 +1,203 @@
+/**
+ * Carlton Valley — Axios API Client
+ *
+ * Single Axios instance with:
+ * - JWT request interceptor (auto-attach access token)
+ * - Response interceptor for 401 → auto refresh + retry
+ * - Typed helper wrappers for each API area
+ */
+
+import axios, { AxiosError, AxiosRequestConfig, InternalAxiosRequestConfig } from 'axios';
+
+// ─── Config ───────────────────────────────────────────────────────────────
+const BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+
+const TOKEN_KEY   = 'cv_access_token';
+const REFRESH_KEY = 'cv_refresh_token';
+
+// ─── Axios Instance ───────────────────────────────────────────────────────
+export const api = axios.create({
+  baseURL: BASE_URL,
+  timeout: 15000,
+  headers: { 'Content-Type': 'application/json' },
+  withCredentials: false,
+});
+
+// ─── Token Helpers ────────────────────────────────────────────────────────
+export const tokenStore = {
+  getAccess:  () => (typeof window !== 'undefined' ? localStorage.getItem(TOKEN_KEY)   : null),
+  getRefresh: () => (typeof window !== 'undefined' ? localStorage.getItem(REFRESH_KEY) : null),
+  setAccess:  (t: string) => localStorage.setItem(TOKEN_KEY, t),
+  setRefresh: (t: string) => localStorage.setItem(REFRESH_KEY, t),
+  clear: () => {
+    localStorage.removeItem(TOKEN_KEY);
+    localStorage.removeItem(REFRESH_KEY);
+  },
+};
+
+// ─── Request Interceptor — attach access token ────────────────────────────
+api.interceptors.request.use((config: InternalAxiosRequestConfig) => {
+  const token = tokenStore.getAccess();
+  if (token && config.headers) {
+    config.headers['Authorization'] = `Bearer ${token}`;
+  }
+  return config;
+});
+
+// ─── Response Interceptor — auto-refresh on 401 ───────────────────────────
+let isRefreshing = false;
+let failedQueue: { resolve: (t: string) => void; reject: (e: unknown) => void }[] = [];
+
+function processQueue(error: unknown, token: string | null) {
+  failedQueue.forEach(p => (error ? p.reject(error) : p.resolve(token!)));
+  failedQueue = [];
+}
+
+api.interceptors.response.use(
+  res => res,
+  async (error: AxiosError) => {
+    const originalRequest = error.config as AxiosRequestConfig & { _retry?: boolean };
+
+    if (
+      error.response?.status === 401 &&
+      (error.response?.data as any)?.code === 'TOKEN_EXPIRED' &&
+      !originalRequest._retry
+    ) {
+      if (isRefreshing) {
+        return new Promise((resolve, reject) => {
+          failedQueue.push({
+            resolve: (token) => {
+              if (originalRequest.headers) {
+                (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${token}`;
+              }
+              resolve(api(originalRequest));
+            },
+            reject,
+          });
+        });
+      }
+
+      originalRequest._retry = true;
+      isRefreshing = true;
+
+      try {
+        const refreshToken = tokenStore.getRefresh();
+        if (!refreshToken) throw new Error('No refresh token');
+
+        const { data } = await axios.post(`${BASE_URL}/api/auth/refresh`, { refreshToken });
+        tokenStore.setAccess(data.accessToken);
+        tokenStore.setRefresh(data.refreshToken);
+
+        processQueue(null, data.accessToken);
+        if (originalRequest.headers) {
+          (originalRequest.headers as Record<string, string>)['Authorization'] = `Bearer ${data.accessToken}`;
+        }
+        return api(originalRequest);
+      } catch (refreshError) {
+        processQueue(refreshError, null);
+        tokenStore.clear();
+        // Redirect to login
+        if (typeof window !== 'undefined') window.location.href = '/login';
+        return Promise.reject(refreshError);
+      } finally {
+        isRefreshing = false;
+      }
+    }
+
+    return Promise.reject(error);
+  }
+);
+
+// ─── API Helper: extract error message ───────────────────────────────────
+export function getApiError(err: unknown): string {
+  if (axios.isAxiosError(err)) {
+    const data = err.response?.data as any;
+    if (data?.errors && Array.isArray(data.errors)) {
+      return data.errors.map((e: any) => e.msg).join(', ');
+    }
+    return data?.message || err.message || 'Request failed';
+  }
+  if (err instanceof Error) return err.message;
+  return 'Unknown error';
+}
+
+// ─── API Namespaces ───────────────────────────────────────────────────────
+
+// AUTH
+export const authApi = {
+  login: (email: string, password: string) =>
+    api.post('/api/auth/login', { email, password }),
+  register: (data: { name: string; email: string; password: string; phone?: string; address?: string }) =>
+    api.post('/api/auth/register', data),
+  refresh: (refreshToken: string) =>
+    api.post('/api/auth/refresh', { refreshToken }),
+  logout: () => api.post('/api/auth/logout'),
+  me: () => api.get('/api/auth/me'),
+};
+
+// PRODUCTS
+export const productsApi = {
+  list: (params?: Record<string, string>) =>
+    api.get('/api/products', { params }),
+  getById: (id: string) =>
+    api.get(`/api/products/${id}`),
+  create: (data: Record<string, unknown>) =>
+    api.post('/api/products', data),
+  update: (id: string, data: Record<string, unknown>) =>
+    api.put(`/api/products/${id}`, data),
+  delete: (id: string) =>
+    api.delete(`/api/products/${id}`),
+  uploadImages: (productId: string, colorId: string, files: File[]) => {
+    const formData = new FormData();
+    formData.append('productId', productId);
+    formData.append('colorId', colorId);
+    files.forEach(f => formData.append('images', f));
+    return api.post(`/api/products/${productId}/colors/${colorId}/images`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  deleteImage: (productId: string, colorId: string, imageUrl: string) =>
+    api.delete(`/api/products/${productId}/colors/${colorId}/images`, { data: { imageUrl } }),
+};
+
+// ORDERS
+export const ordersApi = {
+  list: (params?: Record<string, string | number>) =>
+    api.get('/api/orders', { params }),
+  getById: (id: string) =>
+    api.get(`/api/orders/${id}`),
+  create: (data: Record<string, unknown>) =>
+    api.post('/api/orders', data),
+  updateStatus: (id: string, status: string, trackingNumber?: string) =>
+    api.patch(`/api/orders/${id}/status`, { status, trackingNumber }),
+  delete: (id: string) =>
+    api.delete(`/api/orders/${id}`),
+  getLocations: () =>
+    api.get('/api/orders/locations'),
+};
+
+// CATEGORIES
+export const categoriesApi = {
+  list: () => api.get('/api/categories'),
+  getById: (id: string) => api.get(`/api/categories/${id}`),
+  create: (data: Record<string, unknown>) => api.post('/api/categories', data),
+  update: (id: string, data: Record<string, unknown>) => api.put(`/api/categories/${id}`, data),
+  delete: (id: string) => api.delete(`/api/categories/${id}`),
+};
+
+// REVIEWS
+export const reviewsApi = {
+  list: (params?: { productId?: string; status?: string }) =>
+    api.get('/api/reviews', { params }),
+  submit: (data: Record<string, unknown>) =>
+    api.post('/api/reviews', data),
+  updateStatus: (id: string, status: 'approved' | 'rejected' | 'pending') =>
+    api.patch(`/api/reviews/${id}/status`, { status }),
+  delete: (id: string) =>
+    api.delete(`/api/reviews/${id}`),
+};
+
+// DASHBOARD
+export const dashboardApi = {
+  stats: () => api.get('/api/dashboard/stats'),
+};
