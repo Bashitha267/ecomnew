@@ -201,3 +201,37 @@ export const reviewsApi = {
 export const dashboardApi = {
   stats: () => api.get('/api/dashboard/stats'),
 };
+
+// HOMEPAGE VIDEOS
+export interface HomepageVideoItem {
+  id: string;
+  sectionKey: string;
+  title: string;
+  subtitle?: string;
+  description?: string;
+  videoUrl: string;
+  posterUrl?: string;
+  isActive: number | boolean;
+  updatedAt?: string;
+  createdAt?: string;
+}
+
+export const homepageVideosApi = {
+  list: () => api.get<{ success: boolean; videos: HomepageVideoItem[] }>('/api/homepage-videos'),
+  getByKey: (key: string) => api.get<{ success: boolean; video: HomepageVideoItem }>(`/api/homepage-videos/${key}`),
+  uploadVideoFile: (file: File, sectionKey?: string) => {
+    const formData = new FormData();
+    formData.append('video', file);
+    if (sectionKey) formData.append('sectionKey', sectionKey);
+    return api.post<{ success: boolean; videoUrl: string; filename: string }>('/api/homepage-videos/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  update: (id: string, data: Partial<HomepageVideoItem> | FormData) => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    return api.put<{ success: boolean; video: HomepageVideoItem; message: string }>(`/api/homepage-videos/${id}`, data, {
+      headers,
+    });
+  },
+  reset: () => api.post<{ success: boolean; message: string }>('/api/homepage-videos/reset'),
+};

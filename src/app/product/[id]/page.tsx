@@ -341,15 +341,6 @@ export default function ProductDetailPage({ params }: PageProps) {
               </p>
             </div>
 
-            {/* SPECIAL PROMO BANNER: "Two for $400 - Save $40" (Matching Screenshot 3) */}
-            <div className="bg-[#153424] text-white p-4 rounded-xs space-y-1 text-center cursor-pointer hover:bg-[#1a422e] transition-colors">
-              <h4 className="text-xs uppercase font-serif tracking-[0.2em] font-bold text-emerald-100">
-                Two for $400 - Save $40
-              </h4>
-              <p className="text-[11px] text-emerald-200/80 font-sans tracking-wide">
-                Purchase any 2 shirts for $400 and save $40 at checkout
-              </p>
-            </div>
 
             {/* EXPANDABLE ACCORDIONS: DESCRIPTION & SHIPPING */}
             <div className="border-t border-neutral-200 pt-4 divide-y divide-neutral-200">

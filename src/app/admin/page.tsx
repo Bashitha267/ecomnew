@@ -17,6 +17,8 @@ import {
   DEFAULT_SHIPPING_SECTIONS,
 } from "../../data/data";
 import { RegionalOrderMap } from "../../components/admin/RegionalOrderMap";
+import { HomepageVideoManager } from "../../components/admin/HomepageVideoManager";
+import { getApiError } from "../../lib/api";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -54,6 +56,7 @@ import {
   Download,
   TrendingDown,
   LogOut,
+  Info,
 } from "lucide-react";
 
 const ALL_SIZES: ProductSize[] = ["XS", "S", "M", "L", "XL", "2XL"];
@@ -72,6 +75,7 @@ export default function AdminPage() {
     updateCategory,
     deleteCategory,
     updateOrderStatus,
+    deleteOrder,
     addReview,
     updateReviewStatus,
     deleteReview,
@@ -80,9 +84,23 @@ export default function AdminPage() {
   const { formatPrice } = useCurrency();
 
   // Sidebar navigation state
-  const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "categories" | "products" | "reviews" | "reports">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "categories" | "products" | "reviews" | "reports" | "videos">("dashboard");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
+
+  // Global Toast state
+  const [toast, setToast] = useState<{ show: boolean; message: string; type: "success" | "error" | "info" } | null>(null);
+
+  const showToast = (message: string, type: "success" | "error" | "info" = "success") => {
+    setToast({ show: true, message, type });
+    setTimeout(() => {
+      setToast((prev) => (prev?.message === message ? null : prev));
+    }, 4500);
+  };
+
+  const [isSavingProduct, setIsSavingProduct] = useState(false);
+  const [isSavingCategory, setIsSavingCategory] = useState(false);
+  const [isSavingReview, setIsSavingReview] = useState(false);
 
   // Reports state
   const [reportTimeframe, setReportTimeframe] = useState<"7d" | "30d" | "all">("30d");
@@ -226,55 +244,82 @@ export default function AdminPage() {
     setProductForm(JSON.parse(JSON.stringify(prod)));
     setIsProductModalOpen(true);
   };
-
   // Save Product
-  const handleSaveProduct = (e: React.FormEvent) => {
+  const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!productForm.name || !productForm.id) {
-      alert("Please provide a Product ID and Name");
+    if (!productForm.name?.trim()) {
+      showToast("Please provide a Product Name", "error");
+      return;
+    }
+    if (productForm.priceAUD === undefined || Number(productForm.priceAUD) <= 0) {
+      showToast("Please provide a valid Price", "error");
       return;
     }
 
-    const finalProduct: FullProduct = {
-      id: productForm.id!,
-      name: productForm.name!,
-      priceAUD: Number(productForm.priceAUD) || 0,
-      category: productForm.category || "Shirts",
-      badge: productForm.badge || undefined,
-      inStock: productForm.inStock ?? true,
-      preOrder: productForm.preOrder ?? false,
-      sizes: productForm.sizes && productForm.sizes.length > 0 ? productForm.sizes : ["M", "L"],
-      colors: productForm.colors && productForm.colors.length > 0 ? productForm.colors : [
-        {
-          id: "col-1",
-          name: "Standard",
-          swatchImage: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=300",
-          images: ["https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=1000"],
+    setIsSavingProduct(true);
+    try {
+      const finalId = editingProduct
+        ? editingProduct.id
+        : (productForm.id?.trim() || ("prod-" + Date.now().toString().slice(-6) + Math.random().toString(36).slice(2, 6)));
+
+      const finalProduct: FullProduct = {
+        id: finalId,
+        name: productForm.name.trim(),
+        priceAUD: Number(productForm.priceAUD) || 0,
+        category: productForm.category || "Shirts",
+        badge: productForm.badge || undefined,
+        inStock: productForm.inStock ?? true,
+        preOrder: productForm.preOrder ?? false,
+        sizes: productForm.sizes && productForm.sizes.length > 0 ? productForm.sizes : ["M", "L"],
+        colors: productForm.colors && productForm.colors.length > 0 ? productForm.colors : [
+          {
+            id: "col-1",
+            name: "Standard",
+            swatchImage: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=300",
+            images: ["https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=1000"],
+          },
+        ],
+        descriptionSection: {
+          header: productForm.descriptionSection?.header || productForm.name || "",
+          description: productForm.descriptionSection?.description || "",
+          fit: productForm.descriptionSection?.fit || "",
+          fabric: productForm.descriptionSection?.fabric || "",
+          details: productForm.descriptionSection?.details || "",
         },
-      ],
-      descriptionSection: {
-        header: productForm.descriptionSection?.header || productForm.name || "",
-        description: productForm.descriptionSection?.description || "",
-        fit: productForm.descriptionSection?.fit || "",
-        fabric: productForm.descriptionSection?.fabric || "",
-        details: productForm.descriptionSection?.details || "",
-      },
-      shippingSections: productForm.shippingSections || DEFAULT_SHIPPING_SECTIONS,
-      rating: editingProduct ? editingProduct.rating : (Number(productForm.rating) || 5.0),
-      reviewCount: editingProduct ? editingProduct.reviewCount : (productForm.reviews?.length || 0),
-      reviews: editingProduct ? editingProduct.reviews : (productForm.reviews || []),
-      isNewArrival: productForm.isNewArrival ?? true,
-      isComingSoon: productForm.isComingSoon ?? false,
-      createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString().split("T")[0],
-    };
+        shippingSections: productForm.shippingSections || DEFAULT_SHIPPING_SECTIONS,
+        rating: editingProduct ? editingProduct.rating : (Number(productForm.rating) || 5.0),
+        reviewCount: editingProduct ? editingProduct.reviewCount : (productForm.reviews?.length || 0),
+        reviews: editingProduct ? editingProduct.reviews : (productForm.reviews || []),
+        isNewArrival: productForm.isNewArrival ?? true,
+        isComingSoon: productForm.isComingSoon ?? false,
+        createdAt: editingProduct ? editingProduct.createdAt : new Date().toISOString().split("T")[0],
+      };
 
-    if (editingProduct) {
-      updateProduct(finalProduct);
-    } else {
-      addProduct(finalProduct);
+      if (editingProduct) {
+        await updateProduct(finalProduct);
+        showToast("Product details edited successfully!", "success");
+      } else {
+        await addProduct(finalProduct);
+        showToast("New product added successfully!", "success");
+      }
+
+      setIsProductModalOpen(false);
+    } catch (err) {
+      console.error("Save product error:", err);
+      showToast(getApiError(err) || "Failed to save product to database.", "error");
+    } finally {
+      setIsSavingProduct(false);
     }
+  };
 
-    setIsProductModalOpen(false);
+  const handleDeleteProduct = async (id: string, name: string) => {
+    if (!confirm(`Are you sure you want to delete product "${name}"?`)) return;
+    try {
+      await deleteProduct(id);
+      showToast(`Product "${name}" deleted successfully!`, "success");
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to delete product.", "error");
+    }
   };
 
   // Color Variant Management within Product Form
@@ -383,61 +428,132 @@ export default function AdminPage() {
   };
 
   // Category CRUD
-  const handleSaveCategory = (e: React.FormEvent) => {
+  const handleSaveCategory = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!categoryForm.title) return;
-    const catId = editingCategory ? editingCategory.id : "cat-" + Date.now();
-    const finalCat: Category = {
-      id: catId,
-      title: categoryForm.title!,
-      buttonText: categoryForm.buttonText || "SHOP NOW",
-      image: categoryForm.image || "/images/cat_shop_all.jpg",
-      link: categoryForm.link || "/shop",
-      description: categoryForm.description || "",
-      itemCount: products.filter((p) => p.category === categoryForm.title).length,
-    };
-
-    if (editingCategory) {
-      updateCategory(finalCat);
-    } else {
-      addCategory(finalCat);
-    }
-    setIsCategoryModalOpen(false);
-  };
-
-  // Review CRUD
-  const handleSaveReview = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!selectedProductForReview || !reviewForm.reviewerName || !reviewForm.comment) {
-      alert("Please select product, reviewer name, and comment");
+    if (!categoryForm.title?.trim()) {
+      showToast("Please provide a Category Title.", "error");
       return;
     }
 
-    addReview(selectedProductForReview, {
-      reviewerName: reviewForm.reviewerName,
-      verified: reviewForm.verified,
-      rating: reviewForm.rating,
-      title: reviewForm.title,
-      comment: reviewForm.comment,
-      itemSize: reviewForm.itemSize,
-      itemColor: reviewForm.itemColor,
-      mediaType: reviewForm.mediaUrl ? reviewForm.mediaType : undefined,
-      mediaUrl: reviewForm.mediaUrl || undefined,
-      mediaThumbnail: reviewForm.mediaUrl ? reviewForm.mediaUrl : undefined,
-    });
+    setIsSavingCategory(true);
+    try {
+      const catId = editingCategory ? editingCategory.id : "cat-" + Date.now().toString().slice(-6);
+      const finalCat: Category = {
+        id: catId,
+        title: categoryForm.title.trim(),
+        buttonText: categoryForm.buttonText || "SHOP NOW",
+        image: categoryForm.image || "/images/cat_shop_all.jpg",
+        link: categoryForm.link || "/shop",
+        description: categoryForm.description || "",
+        itemCount: products.filter((p) => p.category === categoryForm.title).length,
+      };
 
-    setIsReviewModalOpen(false);
-    setReviewForm({
-      reviewerName: "",
-      verified: true,
-      rating: 5,
-      title: "",
-      comment: "",
-      itemSize: "M",
-      itemColor: "Black",
-      mediaType: "photo",
-      mediaUrl: "",
-    });
+      if (editingCategory) {
+        await updateCategory(finalCat);
+        showToast("Category updated successfully!", "success");
+      } else {
+        await addCategory(finalCat);
+        showToast("New category created successfully!", "success");
+      }
+      setIsCategoryModalOpen(false);
+    } catch (err) {
+      console.error("Save category error:", err);
+      showToast(getApiError(err) || "Failed to save category.", "error");
+    } finally {
+      setIsSavingCategory(false);
+    }
+  };
+
+  const handleDeleteCategory = async (id: string, title: string) => {
+    if (!confirm(`Are you sure you want to delete category "${title}"?`)) return;
+    try {
+      await deleteCategory(id);
+      showToast(`Category "${title}" deleted successfully!`, "success");
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to delete category.", "error");
+    }
+  };
+
+  // Review CRUD
+  const handleSaveReview = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedProductForReview || !reviewForm.reviewerName || !reviewForm.comment) {
+      showToast("Please select product, reviewer name, and comment", "error");
+      return;
+    }
+
+    setIsSavingReview(true);
+    try {
+      await addReview(selectedProductForReview, {
+        reviewerName: reviewForm.reviewerName.trim(),
+        verified: reviewForm.verified,
+        rating: reviewForm.rating,
+        title: reviewForm.title?.trim() || undefined,
+        comment: reviewForm.comment.trim(),
+        itemSize: reviewForm.itemSize,
+        itemColor: reviewForm.itemColor,
+        mediaType: reviewForm.mediaUrl ? reviewForm.mediaType : undefined,
+        mediaUrl: reviewForm.mediaUrl || undefined,
+        mediaThumbnail: reviewForm.mediaUrl ? reviewForm.mediaUrl : undefined,
+      });
+
+      showToast("Review submitted successfully and saved to database!", "success");
+      setIsReviewModalOpen(false);
+      setReviewForm({
+        reviewerName: "",
+        verified: true,
+        rating: 5,
+        title: "",
+        comment: "",
+        itemSize: "M",
+        itemColor: "Black",
+        mediaType: "photo",
+        mediaUrl: "",
+      });
+    } catch (err) {
+      console.error("Save review error:", err);
+      showToast(getApiError(err) || "Failed to submit review.", "error");
+    } finally {
+      setIsSavingReview(false);
+    }
+  };
+
+  const handleUpdateReviewStatus = async (productId: string, reviewId: string, status: ProductReview["status"]) => {
+    try {
+      await updateReviewStatus(productId, reviewId, status);
+      showToast(`Review marked as ${status} in database!`, "success");
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to update review status.", "error");
+    }
+  };
+
+  const handleDeleteReview = async (productId: string, reviewId: string) => {
+    if (!confirm("Are you sure you want to delete this review?")) return;
+    try {
+      await deleteReview(productId, reviewId);
+      showToast("Review deleted successfully from database!", "success");
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to delete review.", "error");
+    }
+  };
+
+  const handleUpdateOrderStatus = async (orderId: string, status: Order["status"], trackingNumber?: string) => {
+    try {
+      await updateOrderStatus(orderId, status, trackingNumber);
+      showToast(`Order #${orderId} status updated to "${status}"!`, "success");
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to update order status.", "error");
+    }
+  };
+
+  const handleDeleteOrder = async (orderId: string) => {
+    if (!confirm(`Are you sure you want to delete order #${orderId}?`)) return;
+    try {
+      await deleteOrder(orderId);
+      showToast(`Order #${orderId} deleted from database!`, "success");
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to delete order.", "error");
+    }
   };
 
   // Calculations for Dashboard
@@ -726,6 +842,21 @@ export default function AdminPage() {
               <BarChart3 size={18} />
               {!sidebarCollapsed && <span>Reports</span>}
             </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("videos");
+                setMobileSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-md transition-all ${
+                activeTab === "videos"
+                  ? "bg-white text-black font-bold shadow"
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-800/60"
+              }`}
+            >
+              <Video size={18} />
+              {!sidebarCollapsed && <span>Homepage Videos</span>}
+            </button>
           </nav>
         </div>
 
@@ -765,6 +896,7 @@ export default function AdminPage() {
               {activeTab === "products" && "Catalog & Inventory"}
               {activeTab === "reviews" && "Customer Reviews & Media"}
               {activeTab === "reports" && "Reports & Performance Analytics"}
+              {activeTab === "videos" && "Homepage Video Management"}
             </h2>
           </div>
 
@@ -1083,7 +1215,7 @@ export default function AdminPage() {
                           <td className="py-4 px-4">
                             <select
                               value={order.status}
-                              onChange={(e) => updateOrderStatus(order.id, e.target.value as Order["status"])}
+                              onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value as Order["status"])}
                               className={`text-[11px] font-semibold uppercase tracking-wider rounded px-2.5 py-1 border focus:outline-none ${
                                 order.status === "Delivered"
                                   ? "bg-emerald-950 text-emerald-300 border-emerald-700"
@@ -1205,11 +1337,7 @@ export default function AdminPage() {
                               <Edit2 size={14} />
                             </button>
                             <button
-                              onClick={() => {
-                                if (confirm(`Delete category "${cat.title}"?`)) {
-                                  deleteCategory(cat.id);
-                                }
-                              }}
+                              onClick={() => handleDeleteCategory(cat.id, cat.title)}
                               className="p-1.5 text-neutral-400 hover:text-red-400 rounded hover:bg-neutral-800 transition-colors"
                               title="Delete Category"
                             >
@@ -1375,11 +1503,7 @@ export default function AdminPage() {
                                   <Edit2 size={15} />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    if (confirm(`Are you sure you want to delete product "${prod.name}"?`)) {
-                                      deleteProduct(prod.id);
-                                    }
-                                  }}
+                                  onClick={() => handleDeleteProduct(prod.id, prod.name)}
                                   className="p-1.5 text-neutral-400 hover:text-red-400 rounded hover:bg-neutral-800 transition-colors"
                                   title="Delete Product"
                                 >
@@ -1533,7 +1657,7 @@ export default function AdminPage() {
                               <button
                                 onClick={() => {
                                   const nextStatus = review.status === "approved" ? "pending" : "approved";
-                                  updateReviewStatus(product.id, review.id, nextStatus);
+                                  handleUpdateReviewStatus(product.id, review.id, nextStatus);
                                 }}
                                 className="p-1.5 text-neutral-400 hover:text-white rounded hover:bg-neutral-800"
                                 title="Toggle status"
@@ -1541,11 +1665,7 @@ export default function AdminPage() {
                                 <RefreshCw size={14} />
                               </button>
                               <button
-                                onClick={() => {
-                                  if (confirm("Delete this customer review?")) {
-                                    deleteReview(product.id, review.id);
-                                  }
-                                }}
+                                onClick={() => handleDeleteReview(product.id, review.id)}
                                 className="p-1.5 text-neutral-400 hover:text-red-400 rounded hover:bg-neutral-800"
                                 title="Delete review"
                               >
@@ -2031,6 +2151,11 @@ export default function AdminPage() {
               </div>
 
             </div>
+          )}
+
+          {/* HOMEPAGE VIDEOS TAB */}
+          {activeTab === "videos" && (
+            <HomepageVideoManager />
           )}
 
         </div>
@@ -2570,9 +2695,11 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-white text-black px-6 py-2.5 rounded text-xs uppercase tracking-wider font-bold hover:bg-neutral-200 transition-colors"
+                  disabled={isSavingProduct}
+                  className="bg-white text-black px-6 py-2.5 rounded text-xs uppercase tracking-wider font-bold hover:bg-neutral-200 transition-colors flex items-center space-x-2 disabled:opacity-50"
                 >
-                  {editingProduct ? "Save Product Changes" : "Publish Product"}
+                  {isSavingProduct && <RefreshCw size={13} className="animate-spin" />}
+                  <span>{editingProduct ? "Save Product Changes" : "Publish Product"}</span>
                 </button>
               </div>
 
@@ -2671,9 +2798,11 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-white text-black px-5 py-2 rounded font-bold uppercase tracking-wider hover:bg-neutral-200"
+                  disabled={isSavingCategory}
+                  className="bg-white text-black px-5 py-2 rounded font-bold uppercase tracking-wider hover:bg-neutral-200 disabled:opacity-50 flex items-center space-x-1.5"
                 >
-                  Save Category
+                  {isSavingCategory && <RefreshCw size={13} className="animate-spin" />}
+                  <span>Save Category</span>
                 </button>
               </div>
             </form>
@@ -2763,6 +2892,37 @@ export default function AdminPage() {
               <div className="flex justify-between items-center pt-3 border-t border-neutral-800 font-serif text-sm">
                 <span className="text-neutral-300 uppercase tracking-wider">Total Paid</span>
                 <span className="font-bold font-mono text-base text-white">{formatPrice(selectedOrder.totalAUD)}</span>
+              </div>
+
+              <div className="flex justify-between items-center pt-3 border-t border-neutral-800">
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleDeleteOrder(selectedOrder.id);
+                    setIsOrderModalOpen(false);
+                  }}
+                  className="px-3 py-1.5 text-xs text-red-400 hover:text-red-300 hover:bg-red-950/40 rounded transition-colors"
+                >
+                  Delete Order
+                </button>
+                <div className="flex items-center space-x-2">
+                  <span className="text-xs text-neutral-400">Change Status:</span>
+                  <select
+                    value={selectedOrder.status}
+                    onChange={(e) => {
+                      const newStatus = e.target.value as Order["status"];
+                      handleUpdateOrderStatus(selectedOrder.id, newStatus);
+                      setSelectedOrder({ ...selectedOrder, status: newStatus });
+                    }}
+                    className="bg-neutral-800 border border-neutral-700 rounded px-2.5 py-1 text-xs text-white focus:outline-none"
+                  >
+                    <option value="Pending">Pending</option>
+                    <option value="Processing">Processing</option>
+                    <option value="Shipped">Shipped</option>
+                    <option value="Delivered">Delivered</option>
+                    <option value="Cancelled">Cancelled</option>
+                  </select>
+                </div>
               </div>
             </div>
           </div>
@@ -2927,9 +3087,11 @@ export default function AdminPage() {
                 </button>
                 <button
                   type="submit"
-                  className="bg-white text-black px-5 py-2 rounded font-bold uppercase tracking-wider hover:bg-neutral-200"
+                  disabled={isSavingReview}
+                  className="bg-white text-black px-5 py-2 rounded font-bold uppercase tracking-wider hover:bg-neutral-200 disabled:opacity-50 flex items-center space-x-2"
                 >
-                  Post Review
+                  {isSavingReview && <RefreshCw size={13} className="animate-spin" />}
+                  <span>{isSavingReview ? "Saving..." : "Post Review"}</span>
                 </button>
               </div>
             </form>
@@ -2955,6 +3117,34 @@ export default function AdminPage() {
               )}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* GLOBAL ADMIN TOAST NOTIFICATION */}
+      {toast && toast.show && (
+        <div
+          className={`fixed bottom-6 right-6 z-50 max-w-md p-4 rounded-md shadow-2xl border flex items-center space-x-3 transition-all duration-300 animate-slideUp ${
+            toast.type === "success"
+              ? "bg-neutral-900 border-emerald-500/70 text-white"
+              : toast.type === "error"
+              ? "bg-neutral-900 border-red-500/70 text-white"
+              : "bg-neutral-900 border-neutral-700 text-white"
+          }`}
+        >
+          <div className="shrink-0">
+            {toast.type === "success" && <CheckCircle className="w-5 h-5 text-emerald-400" />}
+            {toast.type === "error" && <AlertCircle className="w-5 h-5 text-red-400" />}
+            {toast.type === "info" && <Info className="w-5 h-5 text-blue-400" />}
+          </div>
+          <div className="flex-1 text-xs font-sans font-medium tracking-wide">
+            {toast.message}
+          </div>
+          <button
+            onClick={() => setToast(null)}
+            className="text-neutral-400 hover:text-white text-xs p-1 ml-2 transition-colors"
+          >
+            ✕
+          </button>
         </div>
       )}
 

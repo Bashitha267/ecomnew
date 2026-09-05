@@ -135,12 +135,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateProduct = async (updated: FullProduct) => {
     await productsApi.update(updated.id, updated as unknown as Record<string, unknown>);
-    setProducts(prev => prev.map(p => (p.id === updated.id ? updated : p)));
+    await refreshProducts();
   };
 
   const deleteProduct = async (id: string) => {
     await productsApi.delete(id);
-    setProducts(prev => prev.filter(p => p.id !== id));
+    await refreshProducts();
   };
 
   const getProductById = (id: string) => products.find(p => p.id === id);
@@ -153,18 +153,18 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const updateCategory = async (updated: Category) => {
     await categoriesApi.update(updated.id, updated as unknown as Record<string, unknown>);
-    setCategories(prev => prev.map(c => (c.id === updated.id ? updated : c)));
+    await refreshCategories();
   };
 
   const deleteCategory = async (id: string) => {
     await categoriesApi.delete(id);
-    setCategories(prev => prev.filter(c => c.id !== id));
+    await refreshCategories();
   };
 
   // ─── Order Actions ───────────────────────────────────────────────────────
   const updateOrderStatus = async (orderId: string, status: Order["status"], trackingNumber?: string) => {
     await ordersApi.updateStatus(orderId, status, trackingNumber);
-    setOrders(prev => prev.map(o => o.id === orderId ? { ...o, status, ...(trackingNumber ? { trackingNumber } : {}) } : o));
+    await refreshOrders();
   };
 
   const addOrder = async (orderData: Record<string, unknown>): Promise<Order> => {
@@ -175,47 +175,23 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   const deleteOrder = async (id: string) => {
     await ordersApi.delete(id);
-    setOrders(prev => prev.filter(o => o.id !== id));
+    await refreshOrders();
   };
 
   // ─── Review Actions ──────────────────────────────────────────────────────
   const addReview = async (productId: string, reviewInput: Omit<ProductReview, "id" | "date" | "status">) => {
     await reviewsApi.submit({ ...reviewInput, productId });
-    // Refresh the affected product to get updated rating
-    try {
-      const { data } = await productsApi.getById(productId);
-      if (data.success) {
-        setProducts(prev => prev.map(p => (p.id === productId ? { ...p, ...data.data } : p)));
-      }
-    } catch { /* not critical */ }
+    await refreshProducts();
   };
 
   const updateReviewStatus = async (productId: string, reviewId: string, status: ProductReview["status"]) => {
     await reviewsApi.updateStatus(reviewId, status as "approved" | "rejected" | "pending");
-    // Locally update the review status in the product
-    setProducts(prev =>
-      prev.map(prod => {
-        if (prod.id !== productId) return prod;
-        return {
-          ...prod,
-          reviews: (prod.reviews || []).map(r => (r.id === reviewId ? { ...r, status } : r)),
-        };
-      })
-    );
+    await refreshProducts();
   };
 
   const deleteReview = async (productId: string, reviewId: string) => {
     await reviewsApi.delete(reviewId);
-    setProducts(prev =>
-      prev.map(prod => {
-        if (prod.id !== productId) return prod;
-        const updatedReviews = (prod.reviews || []).filter(r => r.id !== reviewId);
-        const avg = updatedReviews.length > 0
-          ? updatedReviews.reduce((acc, r) => acc + r.rating, 0) / updatedReviews.length
-          : 5.0;
-        return { ...prod, reviews: updatedReviews, reviewCount: updatedReviews.length, rating: parseFloat(avg.toFixed(1)) };
-      })
-    );
+    await refreshProducts();
   };
 
   // ─── Cart Actions ────────────────────────────────────────────────────────

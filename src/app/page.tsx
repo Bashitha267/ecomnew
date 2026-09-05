@@ -1,6 +1,6 @@
 "use client";
 
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { Navbar } from "../components/Navbar";
 import { Hero } from "../components/Hero";
 import { FeaturedVideoSection } from "../components/FeaturedVideoSection";
@@ -11,8 +11,28 @@ import { ComingSoonSection } from "../components/ComingSoonSection";
 import { CommunitySpotlightSection } from "../components/CommunitySpotlightSection";
 import { ValuePropsSection } from "../components/ValuePropsSection";
 import { Footer } from "../components/Footer";
+import { homepageVideosApi } from "../lib/api";
 
 export default function Home() {
+  const [heroVideoSrc, setHeroVideoSrc] = useState<string>("/hero1.mp4");
+  const [featuredVideoSrc, setFeaturedVideoSrc] = useState<string>("/hero2.mp4");
+
+  useEffect(() => {
+    homepageVideosApi.list()
+      .then((res) => {
+        const videos = res.data?.videos;
+        if (videos && videos.length > 0) {
+          const hero = videos.find((v) => v.sectionKey === "hero");
+          if (hero?.videoUrl) setHeroVideoSrc(hero.videoUrl);
+          const featured = videos.find((v) => v.sectionKey === "featured");
+          if (featured?.videoUrl) setFeaturedVideoSrc(featured.videoUrl);
+        }
+      })
+      .catch((err) => {
+        console.warn("Using default video sources:", err);
+      });
+  }, []);
+
   const scrollToSection = (sectionId: string) => {
     const element = document.getElementById(sectionId);
     if (element) {
@@ -26,10 +46,10 @@ export default function Home() {
       <Navbar onNavClick={scrollToSection} />
 
       {/* Hero Section with Video Background */}
-      <Hero videoSrc="/hero1.mp4" onExploreClick={() => scrollToSection("shop")} />
+      <Hero videoSrc={heroVideoSrc} onExploreClick={() => scrollToSection("shop")} />
 
       {/* Featured Video Section (Left Video + Minimal Authentic Text on Right) */}
-      <FeaturedVideoSection videoSrc="/hero2.mp4" onCtaClick={() => scrollToSection("shop")} />
+      <FeaturedVideoSection videoSrc={featuredVideoSrc} onCtaClick={() => scrollToSection("shop")} />
 
       {/* New Arrivals Section (3-Product Swipe Slider with Dual Image Hover Effect) */}
       <NewArrivalsSection />
