@@ -7,6 +7,7 @@ import {
   ProductReview,
 } from "../data/data";
 import { productsApi, ordersApi, categoriesApi, reviewsApi, getApiError } from "../lib/api";
+import { useAuth } from "./AuthContext";
 
 export interface CartItem {
   id: string;
@@ -71,6 +72,7 @@ const StoreContext = createContext<StoreContextType | undefined>(undefined);
 const CART_STORAGE_KEY = "carlton_valley_cart_v3";
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user, isAuthenticated } = useAuth();
   const [products, setProducts]     = useState<FullProduct[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders]         = useState<Order[]>([]);
@@ -120,6 +122,13 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       .finally(() => setIsLoading(false));
   }, [refreshProducts, refreshCategories, refreshOrders]);
 
+  // Whenever user authenticates (e.g. admin logs in), automatically fetch orders immediately!
+  useEffect(() => {
+    if (isAuthenticated) {
+      refreshOrders();
+    }
+  }, [isAuthenticated, user, refreshOrders]);
+
   // Persist cart to localStorage
   useEffect(() => {
     try {
@@ -129,16 +138,22 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ─── Product Actions ─────────────────────────────────────────────────────
   const addProduct = async (product: FullProduct) => {
+    // Optimistic UI update: instantly shows up in the table/cards
+    setProducts((prev) => [product, ...prev.filter((p) => p.id !== product.id)]);
     await productsApi.create(product as unknown as Record<string, unknown>);
     await refreshProducts();
   };
 
   const updateProduct = async (updated: FullProduct) => {
+    // Optimistic UI update: instantly shows edits without waiting or refreshing
+    setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
     await productsApi.update(updated.id, updated as unknown as Record<string, unknown>);
     await refreshProducts();
   };
 
   const deleteProduct = async (id: string) => {
+    // Optimistic UI update: instantly removes from view
+    setProducts((prev) => prev.filter((p) => p.id !== id));
     await productsApi.delete(id);
     await refreshProducts();
   };
@@ -147,22 +162,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
   // ─── Category Actions ────────────────────────────────────────────────────
   const addCategory = async (category: Category) => {
+    setCategories((prev) => [...prev.filter((c) => c.id !== category.id), category]);
     await categoriesApi.create(category as unknown as Record<string, unknown>);
     await refreshCategories();
   };
 
   const updateCategory = async (updated: Category) => {
+    setCategories((prev) => prev.map((c) => (c.id === updated.id ? { ...c, ...updated } : c)));
     await categoriesApi.update(updated.id, updated as unknown as Record<string, unknown>);
     await refreshCategories();
   };
 
   const deleteCategory = async (id: string) => {
+    setCategories((prev) => prev.filter((c) => c.id !== id));
     await categoriesApi.delete(id);
     await refreshCategories();
   };
 
   // ─── Order Actions ───────────────────────────────────────────────────────
   const updateOrderStatus = async (orderId: string, status: Order["status"], trackingNumber?: string) => {
+    setOrders((prev) => prev.map((o) => (o.id === orderId ? { ...o, status, ...(trackingNumber ? { trackingNumber } : {}) } : o)));
     await ordersApi.updateStatus(orderId, status, trackingNumber);
     await refreshOrders();
   };
@@ -174,6 +193,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   };
 
   const deleteOrder = async (id: string) => {
+    setOrders((prev) => prev.filter((o) => o.id !== id));
     await ordersApi.delete(id);
     await refreshOrders();
   };

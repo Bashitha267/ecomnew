@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "../../context/StoreContext";
@@ -71,11 +71,14 @@ export default function AdminPage() {
     addProduct,
     updateProduct,
     deleteProduct,
+    refreshProducts,
     addCategory,
     updateCategory,
     deleteCategory,
+    refreshCategories,
     updateOrderStatus,
     deleteOrder,
+    refreshOrders,
     addReview,
     updateReviewStatus,
     deleteReview,
@@ -101,6 +104,21 @@ export default function AdminPage() {
   const [isSavingProduct, setIsSavingProduct] = useState(false);
   const [isSavingCategory, setIsSavingCategory] = useState(false);
   const [isSavingReview, setIsSavingReview] = useState(false);
+  const [isRefreshingOrders, setIsRefreshingOrders] = useState(false);
+
+  // Auto-refresh orders whenever user visits "orders" or "dashboard" tab
+  useEffect(() => {
+    if (activeTab === "orders" || activeTab === "dashboard") {
+      refreshOrders();
+    }
+  }, [activeTab, refreshOrders]);
+
+  // Initial load when admin enters or user logs in
+  useEffect(() => {
+    refreshOrders();
+    refreshProducts();
+    refreshCategories();
+  }, [user, refreshOrders, refreshProducts, refreshCategories]);
 
   // Reports state
   const [reportTimeframe, setReportTimeframe] = useState<"7d" | "30d" | "all">("30d");
@@ -1150,19 +1168,36 @@ export default function AdminPage() {
                   />
                 </div>
 
-                <div className="flex items-center space-x-2 text-xs">
-                  <span className="text-neutral-400 uppercase tracking-wider text-[11px]">Status:</span>
-                  <select
-                    value={orderStatusFilter}
-                    onChange={(e) => setOrderStatusFilter(e.target.value)}
-                    className="bg-neutral-950 border border-neutral-800 text-white rounded px-3 py-2 focus:outline-none"
+                <div className="flex items-center space-x-3 text-xs">
+                  <button
+                    onClick={async () => {
+                      setIsRefreshingOrders(true);
+                      await refreshOrders();
+                      setIsRefreshingOrders(false);
+                      showToast("Orders refreshed from database!", "info");
+                    }}
+                    disabled={isRefreshingOrders}
+                    className="flex items-center space-x-1.5 px-3 py-2 bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-white rounded transition-colors disabled:opacity-50"
+                    title="Refresh orders from database"
                   >
-                    <option value="all">All Orders ({orders.length})</option>
-                    <option value="pending">Pending</option>
-                    <option value="processing">Processing</option>
-                    <option value="shipped">Shipped</option>
-                    <option value="delivered">Delivered</option>
-                  </select>
+                    <RefreshCw size={13} className={isRefreshingOrders ? "animate-spin" : ""} />
+                    <span>{isRefreshingOrders ? "Syncing..." : "Refresh"}</span>
+                  </button>
+
+                  <div className="flex items-center space-x-2">
+                    <span className="text-neutral-400 uppercase tracking-wider text-[11px]">Status:</span>
+                    <select
+                      value={orderStatusFilter}
+                      onChange={(e) => setOrderStatusFilter(e.target.value)}
+                      className="bg-neutral-950 border border-neutral-800 text-white rounded px-3 py-2 focus:outline-none"
+                    >
+                      <option value="all">All Orders ({orders.length})</option>
+                      <option value="pending">Pending</option>
+                      <option value="processing">Processing</option>
+                      <option value="shipped">Shipped</option>
+                      <option value="delivered">Delivered</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -1182,6 +1217,28 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800">
+                      {filteredOrders.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-neutral-400">
+                            <ShoppingBag className="w-8 h-8 mx-auto mb-2 opacity-40 text-neutral-500" />
+                            <p className="text-sm font-medium text-white">No orders found</p>
+                            <p className="text-xs text-neutral-500 mt-1">
+                              {searchQuery ? "Try adjusting your search or filter." : "No orders have been found."}
+                            </p>
+                            <button
+                              onClick={async () => {
+                                setIsRefreshingOrders(true);
+                                await refreshOrders();
+                                setIsRefreshingOrders(false);
+                              }}
+                              className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded text-xs transition-colors"
+                            >
+                              <RefreshCw size={12} className={isRefreshingOrders ? "animate-spin" : ""} />
+                              <span>Sync Orders Now</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )}
                       {filteredOrders.map((order) => (
                         <tr key={order.id} className="hover:bg-neutral-800/40 transition-colors">
                           <td className="py-4 px-4 font-mono font-bold text-white">{order.id}</td>
@@ -1384,13 +1441,27 @@ export default function AdminPage() {
                   </select>
                 </div>
 
-                <button
-                  onClick={handleOpenCreateProduct}
-                  className="bg-white text-black py-2.5 px-4 rounded text-xs font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-colors flex items-center space-x-2 self-stretch sm:self-auto justify-center"
-                >
-                  <Plus size={16} />
-                  <span>Add New Product</span>
-                </button>
+                <div className="flex items-center space-x-2 self-stretch sm:self-auto justify-end">
+                  <button
+                    onClick={async () => {
+                      await refreshProducts();
+                      showToast("Product list refreshed from database!", "info");
+                    }}
+                    className="bg-neutral-950 border border-neutral-800 hover:border-neutral-700 text-white py-2.5 px-3 rounded text-xs transition-colors flex items-center space-x-1.5"
+                    title="Refresh product list from database"
+                  >
+                    <RefreshCw size={13} />
+                    <span>Sync</span>
+                  </button>
+
+                  <button
+                    onClick={handleOpenCreateProduct}
+                    className="bg-white text-black py-2.5 px-4 rounded text-xs font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-colors flex items-center space-x-2"
+                  >
+                    <Plus size={16} />
+                    <span>Add New Product</span>
+                  </button>
+                </div>
               </div>
 
               {/* Products Table */}
@@ -1409,6 +1480,27 @@ export default function AdminPage() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800">
+                      {filteredProducts.length === 0 && (
+                        <tr>
+                          <td colSpan={7} className="py-12 text-center text-neutral-400">
+                            <Shirt className="w-8 h-8 mx-auto mb-2 opacity-40 text-neutral-500" />
+                            <p className="text-sm font-medium text-white">No products found</p>
+                            <p className="text-xs text-neutral-500 mt-1">
+                              {searchQuery || productCategoryFilter !== "all" ? "Try adjusting your search or category filter." : "No products have been added yet."}
+                            </p>
+                            <button
+                              onClick={async () => {
+                                await refreshProducts();
+                                showToast("Product list refreshed from database!", "info");
+                              }}
+                              className="mt-3 inline-flex items-center space-x-1.5 px-3 py-1.5 bg-neutral-800 hover:bg-neutral-700 text-white rounded text-xs transition-colors"
+                            >
+                              <RefreshCw size={12} />
+                              <span>Sync Products Now</span>
+                            </button>
+                          </td>
+                        </tr>
+                      )}
                       {filteredProducts.map((prod) => {
                         const totalImages = prod.colors.reduce((sum, c) => sum + (c.images?.length || 0), 0);
                         const firstImage = prod.colors[0]?.images[0] || prod.colors[0]?.swatchImage;

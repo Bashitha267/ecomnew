@@ -137,10 +137,22 @@ export const authApi = {
 
 // PRODUCTS
 export const productsApi = {
-  list: (params?: Record<string, string>) =>
-    api.get('/api/products', { params }),
+  list: (params?: Record<string, string | number | boolean>) =>
+    api.get('/api/products', {
+      params: { ...params, _t: Date.now() },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    }),
   getById: (id: string) =>
-    api.get(`/api/products/${id}`),
+    api.get(`/api/products/${id}`, {
+      params: { _t: Date.now() },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    }),
   create: (data: Record<string, unknown>) =>
     api.post('/api/products', data),
   update: (id: string, data: Record<string, unknown>) =>
@@ -163,9 +175,21 @@ export const productsApi = {
 // ORDERS
 export const ordersApi = {
   list: (params?: Record<string, string | number>) =>
-    api.get('/api/orders', { params }),
+    api.get('/api/orders', {
+      params: { ...params, _t: Date.now() },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    }),
   getById: (id: string) =>
-    api.get(`/api/orders/${id}`),
+    api.get(`/api/orders/${id}`, {
+      params: { _t: Date.now() },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    }),
   create: (data: Record<string, unknown>) =>
     api.post('/api/orders', data),
   updateStatus: (id: string, status: string, trackingNumber?: string) =>
@@ -178,8 +202,22 @@ export const ordersApi = {
 
 // CATEGORIES
 export const categoriesApi = {
-  list: () => api.get('/api/categories'),
-  getById: (id: string) => api.get(`/api/categories/${id}`),
+  list: () =>
+    api.get('/api/categories', {
+      params: { _t: Date.now() },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    }),
+  getById: (id: string) =>
+    api.get(`/api/categories/${id}`, {
+      params: { _t: Date.now() },
+      headers: {
+        'Cache-Control': 'no-cache, no-store, must-revalidate',
+        'Pragma': 'no-cache',
+      },
+    }),
   create: (data: Record<string, unknown>) => api.post('/api/categories', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/api/categories/${id}`, data),
   delete: (id: string) => api.delete(`/api/categories/${id}`),
