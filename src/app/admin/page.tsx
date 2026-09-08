@@ -662,7 +662,32 @@ export default function AdminPage() {
     }
   };
 
-  // Calculations for Dashboard
+  // Calculations for Dashboard & Order Currency Handling
+  const AUD_TO_LKR_RATE = 210.5;
+
+  const isOrderSriLankan = (order: { country?: string; shippingAddress?: string }): boolean => {
+    if (order.country === "Sri Lanka") return true;
+    if (order.country === "Australia") return false;
+    const addr = (order.shippingAddress || "").toLowerCase();
+    return addr.includes("sri lanka") || addr.includes("colombo");
+  };
+
+  const formatOrderPrice = (amountAUD: number, country?: string, shippingAddress?: string): string => {
+    const isSL = isOrderSriLankan({ country, shippingAddress });
+    if (isSL) {
+      const lkr = Math.round((Number(amountAUD) || 0) * AUD_TO_LKR_RATE);
+      return `LKR ${lkr.toLocaleString()}`;
+    }
+    return `AUD $${Number(amountAUD || 0).toFixed(2)}`;
+  };
+
+  const ausOrders = orders.filter((o) => !isOrderSriLankan(o));
+  const slOrders = orders.filter((o) => isOrderSriLankan(o));
+
+  const ausRevenueAUD = ausOrders.reduce((sum, o) => sum + (Number(o.totalAUD) || 0), 0);
+  const slRevenueAUD = slOrders.reduce((sum, o) => sum + (Number(o.totalAUD) || 0), 0);
+  const slRevenueLKR = Math.round(slRevenueAUD * AUD_TO_LKR_RATE);
+
   const totalRevenue = orders.reduce((sum, o) => sum + o.totalAUD, 0);
   const totalOrdersCount = orders.length;
   const pendingOrdersCount = orders.filter((o) => o.status === "Pending" || o.status === "Processing").length;
@@ -1070,17 +1095,34 @@ export default function AdminPage() {
             <div className="space-y-8 animate-fadeIn">
               {/* Stat Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
-                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg">
+                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg flex flex-col justify-between">
                   <div className="flex items-center justify-between text-neutral-400 mb-2">
                     <span className="text-xs uppercase tracking-wider font-medium">Total Sales</span>
                     <DollarSign size={18} className="text-emerald-400" />
                   </div>
-                  <div className="text-2xl font-serif font-bold text-white">
-                    {formatPrice(totalRevenue)}
+                  <div className="space-y-1.5 py-1">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 flex items-center gap-1 font-mono">
+                        <span>🇦🇺</span> AUD
+                      </span>
+                      <span className="text-xl font-serif font-bold text-white">
+                        AUD ${ausRevenueAUD.toFixed(2)}
+                      </span>
+                    </div>
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 flex items-center gap-1 font-mono">
+                        <span>🇱🇰</span> LKR
+                      </span>
+                      <span className="text-xl font-serif font-bold text-emerald-400">
+                        LKR {slRevenueLKR.toLocaleString()}
+                      </span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-emerald-400 mt-2 flex items-center space-x-1">
-                    <TrendingUp size={12} />
-                    <span>+18.4% from last month</span>
+                  <div className="text-[11px] text-neutral-400 mt-2 flex items-center justify-between border-t border-neutral-800/80 pt-2">
+                    <span>{ausOrders.length} AU • {slOrders.length} LK orders</span>
+                    <span className="text-emerald-400 flex items-center gap-1">
+                      <TrendingUp size={11} /> +18.4%
+                    </span>
                   </div>
                 </div>
 
@@ -1155,8 +1197,18 @@ export default function AdminPage() {
                         {orders.slice(0, 4).map((order) => (
                           <tr key={order.id} className="hover:bg-neutral-800/40">
                             <td className="py-3 font-mono font-medium text-white">{order.id}</td>
-                            <td className="py-3 text-neutral-300">{order.customerName}</td>
-                            <td className="py-3 font-mono text-neutral-200">{formatPrice(order.totalAUD)}</td>
+                            <td className="py-3 text-neutral-300">
+                              <div>{order.customerName}</div>
+                              <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-mono">
+                                <span>{isOrderSriLankan(order) ? "🇱🇰" : "🇦🇺"}</span>
+                                <span>{order.country || (isOrderSriLankan(order) ? "Sri Lanka" : "Australia")}</span>
+                              </div>
+                            </td>
+                            <td className="py-3 font-mono text-neutral-200">
+                              <span className="font-semibold text-white">
+                                {formatOrderPrice(order.totalAUD, order.country, order.shippingAddress)}
+                              </span>
+                            </td>
                             <td className="py-3">
                               <span
                                 className={`inline-flex px-2 py-0.5 rounded text-[10px] font-semibold uppercase tracking-wider ${
@@ -1323,7 +1375,7 @@ export default function AdminPage() {
                         <th className="py-3.5 px-4 font-semibold">Date</th>
                         <th className="py-3.5 px-4 font-semibold">Customer Details</th>
                         <th className="py-3.5 px-4 font-semibold">Items Purchased</th>
-                        <th className="py-3.5 px-4 font-semibold">Total (AUD)</th>
+                        <th className="py-3.5 px-4 font-semibold">Total Amount</th>
                         <th className="py-3.5 px-4 font-semibold">Status</th>
                         <th className="py-3.5 px-4 text-right font-semibold">Actions</th>
                       </tr>
@@ -1379,7 +1431,12 @@ export default function AdminPage() {
                             </div>
                           </td>
                           <td className="py-4 px-4 font-mono font-medium text-white">
-                            {formatPrice(order.totalAUD)}
+                            <div className="font-bold text-white">
+                              {formatOrderPrice(order.totalAUD, order.country, order.shippingAddress)}
+                            </div>
+                            <div className="text-[10px] text-neutral-400 flex items-center gap-1 font-sans">
+                              <span>{isOrderSriLankan(order) ? "🇱🇰 LKR" : "🇦🇺 AUD"}</span>
+                            </div>
                           </td>
                           <td className="py-4 px-4">
                             <select
@@ -2035,10 +2092,17 @@ export default function AdminPage() {
                     <span className="text-[11px] uppercase tracking-wider font-mono">Gross Sales Revenue</span>
                     <DollarSign size={16} className="text-emerald-400" />
                   </div>
-                  <div className="text-2xl font-mono font-bold text-emerald-400">
-                    {formatPrice(totalReportRevenueAUD)}
+                  <div className="space-y-1">
+                    <div className="text-lg font-mono font-bold text-white flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 font-sans">🇦🇺 AUD</span>
+                      <span>AUD ${ausRevenueAUD.toFixed(2)}</span>
+                    </div>
+                    <div className="text-lg font-mono font-bold text-emerald-400 flex items-center justify-between">
+                      <span className="text-xs text-neutral-400 font-sans">🇱🇰 LKR</span>
+                      <span>LKR {slRevenueLKR.toLocaleString()}</span>
+                    </div>
                   </div>
-                  <div className="text-[11px] text-neutral-400 font-mono">
+                  <div className="text-[11px] text-neutral-400 font-mono pt-1 border-t border-neutral-800">
                     Across {orders.length} orders
                   </div>
                 </div>
@@ -3406,7 +3470,7 @@ export default function AdminPage() {
                         </div>
                       </div>
                       <span className="font-mono font-medium text-white">
-                        {formatPrice(item.priceAUD * item.quantity)}
+                        {formatOrderPrice(item.priceAUD * item.quantity, selectedOrder.country, selectedOrder.shippingAddress)}
                       </span>
                     </div>
                   ))}
@@ -3415,7 +3479,14 @@ export default function AdminPage() {
 
               <div className="flex justify-between items-center pt-3 border-t border-neutral-800 font-serif text-sm">
                 <span className="text-neutral-300 uppercase tracking-wider">Total Paid</span>
-                <span className="font-bold font-mono text-base text-white">{formatPrice(selectedOrder.totalAUD)}</span>
+                <div className="text-right">
+                  <div className="font-bold font-mono text-base text-white">
+                    {formatOrderPrice(selectedOrder.totalAUD, selectedOrder.country, selectedOrder.shippingAddress)}
+                  </div>
+                  <div className="text-[10px] text-neutral-400">
+                    {isOrderSriLankan(selectedOrder) ? "🇱🇰 Sri Lanka (LKR)" : "🇦🇺 Australia (AUD)"}
+                  </div>
+                </div>
               </div>
 
               <div className="flex justify-between items-center pt-3 border-t border-neutral-800">

@@ -62,6 +62,16 @@ const AU_STATE_MAP: Record<string, { code: string; name: string; aliases: string
   "AU-NT":  { code: "NT",  name: "Northern Territory", aliases: ["Northern Territory", "NT", "Northern Territory (NT)"] },
 };
 
+const AUD_TO_LKR_RATE = 210.5;
+
+const formatRegionalPrice = (amountAUD: number, country: "Sri Lanka" | "Australia"): string => {
+  if (country === "Sri Lanka") {
+    const lkr = Math.round((Number(amountAUD) || 0) * AUD_TO_LKR_RATE);
+    return `LKR ${lkr.toLocaleString()}`;
+  }
+  return `AUD $${(Number(amountAUD) || 0).toFixed(2)}`;
+};
+
 export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, formatPrice }) => {
   const [selectedCountry, setSelectedCountry] = useState<"Sri Lanka" | "Australia">("Sri Lanka");
   const [svgContent, setSvgContent] = useState<string>("");
@@ -327,7 +337,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
                 provinceName: provinceLabel || "Sri Lanka",
                 count,
                 revenue,
-                subtext: `Orders: ${count} • Revenue: ${formatPrice(revenue)}`,
+                subtext: `Orders: ${count} • Revenue: ${formatRegionalPrice(revenue, "Sri Lanka")}`,
               });
             };
 
@@ -347,7 +357,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
             provinceName: provinceLabel || "Sri Lanka",
             count,
             revenue,
-            subtext: `Orders: ${count} • Revenue: ${formatPrice(revenue)}`,
+            subtext: `Orders: ${count} • Revenue: ${formatRegionalPrice(revenue, "Sri Lanka")}`,
           });
         };
 
@@ -416,7 +426,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
                 provinceName: `${stateData.code} Territory`,
                 count,
                 revenue,
-                subtext: `Orders: ${count} • Revenue: ${formatPrice(revenue)}`,
+                subtext: `Orders: ${count} • Revenue: ${formatRegionalPrice(revenue, "Australia")}`,
               });
             };
 
@@ -435,7 +445,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
             provinceName: `${stateData.code} Territory`,
             count,
             revenue,
-            subtext: `Orders: ${count} • Revenue: ${formatPrice(revenue)}`,
+            subtext: `Orders: ${count} • Revenue: ${formatRegionalPrice(revenue, "Australia")}`,
           });
         };
 
@@ -542,7 +552,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
                 </div>
               )}
               <div className="text-xs text-neutral-300 font-mono pt-1">
-                Total Revenue: <span className="text-white font-bold">{formatPrice(hoveredInfo.revenue)}</span>
+                Total Revenue: <span className="text-white font-bold">{formatRegionalPrice(hoveredInfo.revenue, selectedCountry)}</span>
               </div>
             </div>
           )}
@@ -640,7 +650,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
 
                         <div className="flex justify-between items-center text-[11px] text-neutral-400 font-mono pt-0.5">
                           <span className="truncate max-w-[190px] text-neutral-400">{prov.districts.slice(0, 3).join(", ")}{prov.districts.length > 3 ? "..." : ""}</span>
-                          <span className="text-neutral-200 font-bold">{formatPrice(data.revenue)} ({percent}%)</span>
+                          <span className="text-neutral-200 font-bold">{formatRegionalPrice(data.revenue, "Sri Lanka")} ({percent}%)</span>
                         </div>
                       </div>
                     );
@@ -682,7 +692,7 @@ export const RegionalOrderMap: React.FC<RegionalOrderMapProps> = ({ orders, form
 
                         <div className="flex justify-between items-center text-[11px] text-neutral-400 font-mono pt-0.5">
                           <span>{state.code} Territory</span>
-                          <span className="text-neutral-200 font-bold">{formatPrice(data.revenue)} ({percent}%)</span>
+                          <span className="text-neutral-200 font-bold">{formatRegionalPrice(data.revenue, "Australia")} ({percent}%)</span>
                         </div>
                       </div>
                     );
