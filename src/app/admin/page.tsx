@@ -126,10 +126,10 @@ export default function AdminPage() {
     refreshOrders();
     refreshProducts();
     refreshCategories();
-  }, [user, refreshOrders, refreshProducts, refreshCategories]);
+  }, [user?.id, refreshOrders, refreshProducts, refreshCategories]);
 
   // Reports state
-  const [reportTimeframe, setReportTimeframe] = useState<"7d" | "30d" | "all">("30d");
+  const [reportTimeframe, setReportTimeframe] = useState<"7d" | "30d" | "all">("all");
 
   // Real analytics data from server (views / clicks / add_to_bag per product)
   const [analyticsMap, setAnalyticsMap] = useState<Record<string, { views: number; clicks: number; addToBag: number }>>({});

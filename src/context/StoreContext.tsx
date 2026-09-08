@@ -179,7 +179,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (isAuthenticated) {
       refreshOrders();
     }
-  }, [isAuthenticated, user, refreshOrders]);
+  }, [isAuthenticated, user?.id, refreshOrders]);
 
   // Persist cart to localStorage
   useEffect(() => {

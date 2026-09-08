@@ -65,6 +65,13 @@ export default function ProductDetailPage({ params }: PageProps) {
     mediaUrl: "",
   });
 
+  // ── Analytics: fire a 'view' event once when the product page loads ──────
+  useEffect(() => {
+    if (product?.id) {
+      analyticsApi.track(product.id, 'view');
+    }
+  }, [product?.id]);
+
   if (!product) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white text-black font-sans">
@@ -81,13 +88,6 @@ export default function ProductDetailPage({ params }: PageProps) {
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
   const galleryImages = currentColor?.images || [];
   const afterpayInstallment = (product.priceAUD / 4).toFixed(2);
-
-  // ── Analytics: fire a 'view' event once when the product page loads ──────
-  useEffect(() => {
-    if (product?.id) {
-      analyticsApi.track(product.id, 'view');
-    }
-  }, [product?.id]);
 
   const handleAddToCart = () => {
     addToCart({
