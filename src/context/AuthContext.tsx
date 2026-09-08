@@ -33,6 +33,7 @@ interface AuthContextType {
     password: string;
     phone?: string;
     address?: string;
+    country?: string;
   }) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
 }
@@ -51,7 +52,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       try {
         const cachedUser = localStorage.getItem(USER_CACHE_KEY);
         if (cachedUser) {
-          setUser(JSON.parse(cachedUser));
+          const parsed = JSON.parse(cachedUser);
+          setUser(parsed);
+          if (parsed.country) {
+            localStorage.setItem("cv_selected_country", parsed.country);
+            localStorage.setItem("cv_country_selected", "true");
+          }
         }
 
         // If we have a token, verify it's still valid
@@ -61,6 +67,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           if (data.success) {
             setUser(data.user);
             localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
+            if (data.user.country) {
+              localStorage.setItem("cv_selected_country", data.user.country);
+              localStorage.setItem("cv_country_selected", "true");
+            }
           }
         }
       } catch {
@@ -90,6 +100,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tokenStore.setRefresh(data.refreshToken);
         setUser(data.user);
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
+        if (data.user.country) {
+          localStorage.setItem("cv_selected_country", data.user.country);
+          localStorage.setItem("cv_country_selected", "true");
+        }
         return { success: true, role: data.user.role, name: data.user.name };
       }
 
@@ -106,6 +120,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     password: string;
     phone?: string;
     address?: string;
+    country?: string;
   }): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data } = await authApi.register(formData);
@@ -115,6 +130,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         tokenStore.setRefresh(data.refreshToken);
         setUser(data.user);
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
+        if (data.user.country) {
+          localStorage.setItem("cv_selected_country", data.user.country);
+          localStorage.setItem("cv_country_selected", "true");
+        }
         return { success: true };
       }
 

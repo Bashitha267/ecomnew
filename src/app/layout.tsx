@@ -3,6 +3,7 @@ import "./globals.css";
 import { CurrencyProvider } from "../context/CurrencyContext";
 import { StoreProvider } from "../context/StoreContext";
 import { AuthProvider } from "../context/AuthContext";
+import { CountrySelectModal } from "../components/CountrySelectModal";
 
 export const metadata: Metadata = {
   title: "CARLTON VALLEY | High Fashion & Contemporary Wear",
@@ -21,6 +22,7 @@ export default function RootLayout({
           <StoreProvider>
             <CurrencyProvider>
               {children}
+              <CountrySelectModal />
             </CurrencyProvider>
           </StoreProvider>
         </AuthProvider>

@@ -28,7 +28,7 @@ interface NavbarProps {
 
 export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
   const { currency, setCurrency, formatPrice } = useCurrency();
-  const { cart, removeFromCart, updateCartQuantity, products } = useStore();
+  const { cart, removeFromCart, updateCartQuantity, products, selectedCountry, setSelectedCountry } = useStore();
   const { user, isAuthenticated, isAdmin, logout } = useAuth();
 
   const [isCurrencyOpen, setIsCurrencyOpen] = useState(false);
@@ -137,48 +137,80 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
           {/* Right Utilities */}
           <div className="flex items-center space-x-3 sm:space-x-4 md:space-x-6 text-[13px]">
             
-            {/* Currency Selector */}
+            {/* Country & Currency Destination Selector */}
             <div className="relative hidden md:block">
               <button
                 onClick={() => {
                   setIsCurrencyOpen(!isCurrencyOpen);
                   setIsUserDropdownOpen(false);
                 }}
-                className={`flex items-center space-x-1 tracking-wider text-xs md:text-[13px] font-medium transition-opacity py-1 px-1 cursor-pointer ${
+                className={`flex items-center space-x-1.5 tracking-wider text-xs md:text-[13px] font-medium transition-opacity py-1 px-1.5 rounded cursor-pointer ${
                   scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-80"
                 }`}
                 aria-expanded={isCurrencyOpen}
+                title="Select boutique destination and currency"
               >
-                <span>{currency === "AUD" ? "AUD $" : "LKR Rs"}</span>
-                <ChevronDown size={14} className={`transition-transform duration-200 ${isCurrencyOpen ? "rotate-180" : ""}`} />
+                <span className="text-sm leading-none">
+                  {selectedCountry === "Sri Lanka" ? "🇱🇰" : "🇦🇺"}
+                </span>
+                <span className="font-mono text-xs">
+                  {selectedCountry === "Sri Lanka" ? "LKR" : "AUD"}
+                </span>
+                <ChevronDown size={13} className={`transition-transform duration-200 ${isCurrencyOpen ? "rotate-180" : ""}`} />
               </button>
 
-              {/* Currency Dropdown Menu */}
+              {/* Destination Dropdown Menu */}
               {isCurrencyOpen && (
-                <div className="absolute right-0 mt-2 w-32 bg-white text-black border border-neutral-200 shadow-xl rounded-sm py-1 z-50 text-xs font-sans">
+                <div className="absolute right-0 mt-2 w-48 bg-white text-black border border-neutral-200 shadow-xl rounded-md py-1.5 z-50 text-xs font-sans">
+                  <div className="px-3 py-1 text-[10px] font-mono uppercase tracking-wider text-neutral-400 border-b border-neutral-100">
+                    Boutique Destination
+                  </div>
                   <button
                     onClick={() => {
+                      setSelectedCountry("Australia");
                       setCurrency("AUD");
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("cv_selected_country", "Australia");
+                        localStorage.setItem("cv_country_selected", "true");
+                      }
                       setIsCurrencyOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-neutral-50 transition-colors ${
-                      currency === "AUD" ? "font-bold text-black bg-neutral-50" : "text-neutral-700"
+                    className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-neutral-50 transition-colors ${
+                      selectedCountry === "Australia" ? "font-bold text-black bg-neutral-50" : "text-neutral-700"
                     }`}
                   >
-                    <span>AUD ($)</span>
-                    {currency === "AUD" && <Check size={14} className="text-black" />}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-base">🇦🇺</span>
+                      <div>
+                        <p className="font-medium leading-tight">Australia</p>
+                        <p className="text-[10px] text-neutral-500 font-mono">AUD ($)</p>
+                      </div>
+                    </div>
+                    {selectedCountry === "Australia" && <Check size={14} className="text-black" />}
                   </button>
+
                   <button
                     onClick={() => {
+                      setSelectedCountry("Sri Lanka");
                       setCurrency("LKR");
+                      if (typeof window !== "undefined") {
+                        localStorage.setItem("cv_selected_country", "Sri Lanka");
+                        localStorage.setItem("cv_country_selected", "true");
+                      }
                       setIsCurrencyOpen(false);
                     }}
-                    className={`w-full text-left px-4 py-2.5 flex items-center justify-between hover:bg-neutral-50 transition-colors ${
-                      currency === "LKR" ? "font-bold text-black bg-neutral-50" : "text-neutral-700"
+                    className={`w-full text-left px-3.5 py-2.5 flex items-center justify-between hover:bg-neutral-50 transition-colors ${
+                      selectedCountry === "Sri Lanka" ? "font-bold text-black bg-neutral-50" : "text-neutral-700"
                     }`}
                   >
-                    <span>LKR (Rs)</span>
-                    {currency === "LKR" && <Check size={14} className="text-black" />}
+                    <div className="flex items-center space-x-2">
+                      <span className="text-base">🇱🇰</span>
+                      <div>
+                        <p className="font-medium leading-tight">Sri Lanka</p>
+                        <p className="text-[10px] text-neutral-500 font-mono">LKR (Rs)</p>
+                      </div>
+                    </div>
+                    {selectedCountry === "Sri Lanka" && <Check size={14} className="text-black" />}
                   </button>
                 </div>
               )}
@@ -372,25 +404,45 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
               )}
             </nav>
 
-            {/* Currency in Mobile Menu */}
-            <div className="mt-6 pt-6 border-t border-neutral-500/20 flex items-center justify-between px-2 text-xs font-mono">
-              <span className="text-neutral-400 uppercase tracking-widest">Currency:</span>
-              <div className="flex space-x-2">
+            {/* Country & Currency in Mobile Menu */}
+            <div className="mt-6 pt-6 border-t border-neutral-500/20 flex flex-col space-y-2 px-2 text-xs font-mono">
+              <span className="text-neutral-400 uppercase tracking-widest text-[10px]">Boutique Destination:</span>
+              <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setCurrency("AUD")}
-                  className={`px-3 py-1 border transition-colors ${
-                    currency === "AUD" ? "bg-white text-black border-white font-bold" : "border-neutral-500/40 text-neutral-300"
+                  onClick={() => {
+                    setSelectedCountry("Australia");
+                    setCurrency("AUD");
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("cv_selected_country", "Australia");
+                      localStorage.setItem("cv_country_selected", "true");
+                    }
+                  }}
+                  className={`px-3 py-2 border text-left flex items-center space-x-2 transition-colors ${
+                    selectedCountry === "Australia"
+                      ? "bg-white text-black border-white font-bold"
+                      : "border-neutral-500/40 text-neutral-300"
                   }`}
                 >
-                  AUD $
+                  <span className="text-sm">🇦🇺</span>
+                  <span>Australia (AUD)</span>
                 </button>
                 <button
-                  onClick={() => setCurrency("LKR")}
-                  className={`px-3 py-1 border transition-colors ${
-                    currency === "LKR" ? "bg-white text-black border-white font-bold" : "border-neutral-500/40 text-neutral-300"
+                  onClick={() => {
+                    setSelectedCountry("Sri Lanka");
+                    setCurrency("LKR");
+                    if (typeof window !== "undefined") {
+                      localStorage.setItem("cv_selected_country", "Sri Lanka");
+                      localStorage.setItem("cv_country_selected", "true");
+                    }
+                  }}
+                  className={`px-3 py-2 border text-left flex items-center space-x-2 transition-colors ${
+                    selectedCountry === "Sri Lanka"
+                      ? "bg-white text-black border-white font-bold"
+                      : "border-neutral-500/40 text-neutral-300"
                   }`}
                 >
-                  LKR Rs
+                  <span className="text-sm">🇱🇰</span>
+                  <span>Sri Lanka (LKR)</span>
                 </button>
               </div>
             </div>

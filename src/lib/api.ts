@@ -127,7 +127,7 @@ export function getApiError(err: unknown): string {
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/api/auth/login', { email, password }),
-  register: (data: { name: string; email: string; password: string; phone?: string; address?: string }) =>
+  register: (data: { name: string; email: string; password: string; phone?: string; address?: string; country?: string }) =>
     api.post('/api/auth/register', data),
   refresh: (refreshToken: string) =>
     api.post('/api/auth/refresh', { refreshToken }),
@@ -151,6 +151,20 @@ export const productsApi = {
     api.put(`/api/products/${id}`, data),
   delete: (id: string) =>
     api.delete(`/api/products/${id}`),
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post<{ success: boolean; url: string; filename: string }>('/api/products/upload-image', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  uploadMultipleImages: (files: File[]) => {
+    const formData = new FormData();
+    files.forEach(f => formData.append('images', f));
+    return api.post<{ success: boolean; urls: string[]; count: number }>('/api/products/upload-images', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
   uploadImages: (productId: string, colorId: string, files: File[]) => {
     const formData = new FormData();
     formData.append('productId', productId);

@@ -23,6 +23,9 @@ export interface CartItem {
 interface StoreContextType {
   // Data
   products: FullProduct[];
+  allProducts: FullProduct[];
+  selectedCountry: "Australia" | "Sri Lanka";
+  setSelectedCountry: (country: "Australia" | "Sri Lanka") => void;
   categories: Category[];
   orders: Order[];
   cart: CartItem[];
@@ -73,7 +76,8 @@ const CART_STORAGE_KEY = "carlton_valley_cart_v3";
 
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
-  const [products, setProducts]     = useState<FullProduct[]>([]);
+  const [allProducts, setAllProducts] = useState<FullProduct[]>([]);
+  const [selectedCountry, setSelectedCountryState] = useState<"Australia" | "Sri Lanka">("Australia");
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders]         = useState<Order[]>([]);
   const [cart, setCart]             = useState<CartItem[]>([]);
@@ -81,11 +85,47 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoading, setIsLoading]   = useState(true);
   const [error, setError]           = useState<string | null>(null);
 
+  // Sync selected country from authenticated user or localStorage
+  useEffect(() => {
+    if (user?.country === "Sri Lanka" || user?.country === "Australia") {
+      setSelectedCountryState(user.country);
+      try {
+        localStorage.setItem("cv_selected_country", user.country);
+        localStorage.setItem("cv_country_selected", "true");
+      } catch { /* ignore */ }
+    } else {
+      try {
+        const saved = localStorage.getItem("cv_selected_country");
+        if (saved === "Sri Lanka" || saved === "Australia") {
+          setSelectedCountryState(saved);
+        }
+      } catch { /* ignore */ }
+    }
+  }, [user]);
+
+  const setSelectedCountry = useCallback((country: "Australia" | "Sri Lanka") => {
+    setSelectedCountryState(country);
+    try {
+      localStorage.setItem("cv_selected_country", country);
+      localStorage.setItem("cv_country_selected", "true");
+    } catch { /* ignore */ }
+  }, []);
+
+  // Filter products by selected country for customers
+  const products = useMemo(() => {
+    return allProducts.filter((p) => {
+      if (!p.targetCountries || !Array.isArray(p.targetCountries) || p.targetCountries.length === 0) {
+        return true;
+      }
+      return p.targetCountries.includes(selectedCountry);
+    });
+  }, [allProducts, selectedCountry]);
+
   // ─── Bootstrap: load all data from API ──────────────────────────────────
   const refreshProducts = useCallback(async () => {
     try {
       const { data } = await productsApi.list();
-      setProducts(data.data || []);
+      setAllProducts(data.data || []);
     } catch (err) {
       console.warn("Failed to load products:", getApiError(err));
       setError(getApiError(err));
@@ -139,26 +179,26 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   // ─── Product Actions ─────────────────────────────────────────────────────
   const addProduct = async (product: FullProduct) => {
     // Optimistic UI update: instantly shows up in the table/cards
-    setProducts((prev) => [product, ...prev.filter((p) => p.id !== product.id)]);
+    setAllProducts((prev) => [product, ...prev.filter((p) => p.id !== product.id)]);
     await productsApi.create(product as unknown as Record<string, unknown>);
     await refreshProducts();
   };
 
   const updateProduct = async (updated: FullProduct) => {
     // Optimistic UI update: instantly shows edits without waiting or refreshing
-    setProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
+    setAllProducts((prev) => prev.map((p) => (p.id === updated.id ? { ...p, ...updated } : p)));
     await productsApi.update(updated.id, updated as unknown as Record<string, unknown>);
     await refreshProducts();
   };
 
   const deleteProduct = async (id: string) => {
     // Optimistic UI update: instantly removes from view
-    setProducts((prev) => prev.filter((p) => p.id !== id));
+    setAllProducts((prev) => prev.filter((p) => p.id !== id));
     await productsApi.delete(id);
     await refreshProducts();
   };
 
-  const getProductById = (id: string) => products.find(p => p.id === id);
+  const getProductById = (id: string) => allProducts.find(p => p.id === id);
 
   // ─── Category Actions ────────────────────────────────────────────────────
   const addCategory = async (category: Category) => {
@@ -239,7 +279,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const clearCart = () => setCart([]);
 
   const resetStoreData = () => {
-    setProducts([]);
+    setAllProducts([]);
     setCategories([]);
     setOrders([]);
     setCart([]);
@@ -252,7 +292,8 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StoreContext.Provider
       value={{
-        products, categories, orders, cart,
+        products, allProducts, selectedCountry, setSelectedCountry,
+        categories, orders, cart,
         isCartOpen, isLoading, error,
         setIsCartOpen,
         addToCart, removeFromCart, updateCartQuantity, clearCart,

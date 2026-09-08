@@ -23,13 +23,14 @@ import {
 
 export default function LoginPage() {
   const router = useRouter();
-  const { login } = useAuth();
+  const { login, register } = useAuth();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
+  const [country, setCountry] = useState<"Australia" | "Sri Lanka">("Australia");
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -55,10 +56,30 @@ export default function LoginPage() {
       return;
     }
 
-    const result = await login(usernameOrEmail, password, fullName, {
-      phone: phone.trim(),
-      address: address.trim(),
-    });
+    if (mode === "signup") {
+      const regResult = await register({
+        name: fullName.trim(),
+        email: usernameOrEmail.trim(),
+        password,
+        phone: phone.trim(),
+        address: address.trim(),
+        country,
+      });
+
+      if (!regResult.success) {
+        setErrorMessage(regResult.error || "Registration failed. Please check your details.");
+        setIsLoading(false);
+        return;
+      }
+
+      setSuccessMessage(`Welcome to Carlton Valley Atelier, ${fullName.trim()}. Profile created for ${country}.`);
+      setTimeout(() => {
+        router.push("/");
+      }, 600);
+      return;
+    }
+
+    const result = await login(usernameOrEmail, password);
 
     if (!result.success) {
       setErrorMessage(result.error || "Invalid credentials. Please try again.");
@@ -72,11 +93,7 @@ export default function LoginPage() {
         router.push("/admin");
       }, 500);
     } else {
-      setSuccessMessage(
-        mode === "signup"
-          ? `Welcome to Carlton Valley Atelier, ${result.name}. Profile created.`
-          : `Welcome back, ${result.name}. Loading boutique...`
-      );
+      setSuccessMessage(`Welcome back, ${result.name}. Loading boutique...`);
       setTimeout(() => {
         router.push("/");
       }, 500);
@@ -317,6 +334,56 @@ export default function LoginPage() {
                         placeholder="Street, City, State, Postal Code"
                         className="w-full bg-white/[0.08] hover:bg-white/[0.12] focus:bg-white/[0.15] border border-white/25 focus:border-white px-3 py-2.5 pl-11 text-xs text-white placeholder-white/35 focus:outline-none transition-all rounded-lg sm:rounded-none backdrop-blur-md shadow-inner"
                       />
+                    </div>
+                  </div>
+
+                  {/* Select Country (Australia vs Sri Lanka) */}
+                  <div className="space-y-1.5 animate-fadeIn pt-1">
+                    <label className="block text-[9px] font-mono uppercase tracking-[0.2em] text-neutral-300">
+                      Select Country / Region *
+                    </label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCountry("Australia")}
+                        className={`p-2.5 rounded-lg sm:rounded-none border text-left transition-all flex items-center space-x-2.5 cursor-pointer ${
+                          country === "Australia"
+                            ? "bg-white text-black border-white shadow-lg"
+                            : "bg-white/[0.06] border-white/20 text-neutral-300 hover:border-white/40 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-xl">🇦🇺</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold leading-tight uppercase tracking-wider">Australia</p>
+                          <p className={`text-[9px] font-mono ${country === "Australia" ? "text-neutral-700" : "text-neutral-400"}`}>
+                            AUD ($)
+                          </p>
+                        </div>
+                        {country === "Australia" && (
+                          <CheckCircle2 size={15} className="text-black shrink-0" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCountry("Sri Lanka")}
+                        className={`p-2.5 rounded-lg sm:rounded-none border text-left transition-all flex items-center space-x-2.5 cursor-pointer ${
+                          country === "Sri Lanka"
+                            ? "bg-white text-black border-white shadow-lg"
+                            : "bg-white/[0.06] border-white/20 text-neutral-300 hover:border-white/40 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-xl">🇱🇰</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-semibold leading-tight uppercase tracking-wider">Sri Lanka</p>
+                          <p className={`text-[9px] font-mono ${country === "Sri Lanka" ? "text-neutral-700" : "text-neutral-400"}`}>
+                            LKR (Rs)
+                          </p>
+                        </div>
+                        {country === "Sri Lanka" && (
+                          <CheckCircle2 size={15} className="text-black shrink-0" />
+                        )}
+                      </button>
                     </div>
                   </div>
                 </>

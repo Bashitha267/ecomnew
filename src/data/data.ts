@@ -47,6 +47,7 @@ export interface FullProduct {
   badge?: string;
   inStock: boolean;
   preOrder: boolean;
+  targetCountries?: string[];
   sizes: ProductSize[];
   colors: ProductColorVariant[];
   descriptionSection: ProductDescription;
@@ -70,6 +71,7 @@ export interface Product {
   reviewCount: number;
   category: string;
   badge?: string;
+  targetCountries?: string[];
   isNewArrival?: boolean;
   isComingSoon?: boolean;
 }

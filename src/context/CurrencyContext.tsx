@@ -1,6 +1,7 @@
 "use client";
 
-import React, { createContext, useContext, useState } from "react";
+import React, { createContext, useContext, useState, useEffect } from "react";
+import { useStore } from "./StoreContext";
 
 export type Currency = "AUD" | "LKR";
 
@@ -17,7 +18,16 @@ const CurrencyContext = createContext<CurrencyContextType | undefined>(undefined
 const AUD_TO_LKR_RATE = 210.5;
 
 export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [currency, setCurrency] = useState<Currency>("LKR");
+  const { selectedCountry } = useStore();
+  const [currency, setCurrency] = useState<Currency>(selectedCountry === "Australia" ? "AUD" : "LKR");
+
+  useEffect(() => {
+    if (selectedCountry === "Australia") {
+      setCurrency("AUD");
+    } else if (selectedCountry === "Sri Lanka") {
+      setCurrency("LKR");
+    }
+  }, [selectedCountry]);
 
   const formatPrice = (priceInAUD: number): string => {
     if (currency === "LKR") {

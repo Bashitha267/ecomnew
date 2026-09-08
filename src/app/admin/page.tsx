@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useStore } from "../../context/StoreContext";
@@ -20,7 +20,7 @@ import { RegionalOrderMap } from "../../components/admin/RegionalOrderMap";
 import { HomepageVideoManager } from "../../components/admin/HomepageVideoManager";
 import { CommunitySpotlightManager } from "../../components/admin/CommunitySpotlightManager";
 import { UserManager } from "../../components/admin/UserManager";
-import { getApiError } from "../../lib/api";
+import { getApiError, productsApi } from "../../lib/api";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -70,7 +70,8 @@ export default function AdminPage() {
   const router = useRouter();
   const { user, logout } = useAuth();
   const {
-    products,
+    allProducts,
+    products: customerProducts,
     categories,
     orders,
     addProduct,
@@ -89,6 +90,7 @@ export default function AdminPage() {
     deleteReview,
     resetStoreData,
   } = useStore();
+  const products = allProducts && allProducts.length > 0 ? allProducts : customerProducts;
   const { formatPrice } = useCurrency();
 
   // Sidebar navigation state
@@ -133,6 +135,7 @@ export default function AdminPage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
   const [productCategoryFilter, setProductCategoryFilter] = useState<string>("all");
+  const [productCountryFilter, setProductCountryFilter] = useState<string>("all");
 
   // Modals state
   const [isProductModalOpen, setIsProductModalOpen] = useState(false);
@@ -158,6 +161,7 @@ export default function AdminPage() {
     badge: "New Arrival",
     inStock: true,
     preOrder: false,
+    targetCountries: ["Australia", "Sri Lanka"],
     sizes: ["XS", "S", "M", "L", "XL", "2XL"],
     colors: [
       {
@@ -231,6 +235,7 @@ export default function AdminPage() {
       badge: "New Arrival",
       inStock: true,
       preOrder: false,
+      targetCountries: ["Australia", "Sri Lanka"],
       sizes: ["XS", "S", "M", "L", "XL", "2XL"],
       colors: [
         {
@@ -265,7 +270,10 @@ export default function AdminPage() {
   // Open Product Modal for Edit
   const handleOpenEditProduct = (prod: FullProduct) => {
     setEditingProduct(prod);
-    setProductForm(JSON.parse(JSON.stringify(prod)));
+    const targetCountries = prod.targetCountries && prod.targetCountries.length > 0
+      ? prod.targetCountries
+      : ["Australia", "Sri Lanka"];
+    setProductForm({ ...JSON.parse(JSON.stringify(prod)), targetCountries });
     setIsProductModalOpen(true);
   };
   // Save Product
@@ -294,6 +302,9 @@ export default function AdminPage() {
         badge: productForm.badge || undefined,
         inStock: productForm.inStock ?? true,
         preOrder: productForm.preOrder ?? false,
+        targetCountries: productForm.targetCountries && productForm.targetCountries.length > 0
+          ? productForm.targetCountries
+          : ["Australia", "Sri Lanka"],
         sizes: productForm.sizes && productForm.sizes.length > 0 ? productForm.sizes : ["M", "L"],
         colors: productForm.colors && productForm.colors.length > 0 ? productForm.colors : [
           {
@@ -399,6 +410,77 @@ export default function AdminPage() {
       updatedColors[colorIndex].images = updatedColors[colorIndex].images.filter((_, idx) => idx !== imgIndex);
       return { ...prev, colors: updatedColors };
     });
+  };
+
+  // ─── File Upload Handlers for Product Color Variants ─────────────────────
+  const [uploadingSwatchIdx, setUploadingSwatchIdx] = useState<number | null>(null);
+  const [uploadingPhotosIdx, setUploadingPhotosIdx] = useState<number | null>(null);
+  const swatchFileInputs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+  const photosFileInputs = useRef<{ [key: number]: HTMLInputElement | null }>({});
+
+  const handleUploadSwatch = async (colorIdx: number, file: File) => {
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      showToast("Please upload an image file (JPEG, PNG, WEBP, GIF, AVIF)", "error");
+      return;
+    }
+    setUploadingSwatchIdx(colorIdx);
+    try {
+      const res = await productsApi.uploadImage(file);
+      if (res.data?.url) {
+        handleUpdateColorField(colorIdx, "swatchImage", res.data.url);
+        showToast("Swatch image uploaded to uploads/ successfully!", "success");
+      }
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to upload swatch image", "error");
+    } finally {
+      setUploadingSwatchIdx(null);
+      if (swatchFileInputs.current[colorIdx]) {
+        swatchFileInputs.current[colorIdx]!.value = "";
+      }
+    }
+  };
+
+  const handleUploadColorPhotos = async (colorIdx: number, files: FileList | File[]) => {
+    if (!files || files.length === 0) return;
+    const currentImages = productForm.colors?.[colorIdx]?.images || [];
+    const remainingSlots = 6 - currentImages.length;
+    if (remainingSlots <= 0) {
+      showToast("Maximum 6 images allowed per colorway.", "error");
+      return;
+    }
+
+    const fileArray = Array.from(files).slice(0, remainingSlots);
+    for (const f of fileArray) {
+      if (!f.type.startsWith("image/")) {
+        showToast("Please upload only valid image files (JPEG, PNG, WEBP, etc.)", "error");
+        return;
+      }
+    }
+
+    setUploadingPhotosIdx(colorIdx);
+    try {
+      const res = await productsApi.uploadMultipleImages(fileArray);
+      if (res.data?.urls && res.data.urls.length > 0) {
+        setProductForm((prev) => {
+          const updatedColors = [...(prev.colors || [])];
+          const curr = updatedColors[colorIdx].images || [];
+          updatedColors[colorIdx] = {
+            ...updatedColors[colorIdx],
+            images: [...curr, ...res.data.urls].slice(0, 6),
+          };
+          return { ...prev, colors: updatedColors };
+        });
+        showToast(`Uploaded ${res.data.urls.length} photo(s) to uploads/ successfully!`, "success");
+      }
+    } catch (err) {
+      showToast(getApiError(err) || "Failed to upload images", "error");
+    } finally {
+      setUploadingPhotosIdx(null);
+      if (photosFileInputs.current[colorIdx]) {
+        photosFileInputs.current[colorIdx]!.value = "";
+      }
+    }
   };
 
   // Dynamic Shipping Section and Bullet Points Management
@@ -614,6 +696,14 @@ export default function AdminPage() {
   const filteredProducts = products.filter((p) => {
     if (productCategoryFilter !== "all" && p.category !== productCategoryFilter) {
       return false;
+    }
+    if (productCountryFilter !== "all") {
+      const pCountries = p.targetCountries && p.targetCountries.length > 0
+        ? p.targetCountries
+        : ["Australia", "Sri Lanka"];
+      if (!pCountries.includes(productCountryFilter)) {
+        return false;
+      }
     }
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
@@ -1461,6 +1551,16 @@ export default function AdminPage() {
                       </option>
                     ))}
                   </select>
+
+                  <select
+                    value={productCountryFilter}
+                    onChange={(e) => setProductCountryFilter(e.target.value)}
+                    className="bg-neutral-950 border border-neutral-800 text-white rounded px-3 py-2 text-xs focus:outline-none"
+                  >
+                    <option value="all">All Regions</option>
+                    <option value="Sri Lanka">🇱🇰 Sri Lanka</option>
+                    <option value="Australia">🇦🇺 Australia</option>
+                  </select>
                 </div>
 
                 <div className="flex items-center space-x-2 self-stretch sm:self-auto justify-end">
@@ -1495,6 +1595,7 @@ export default function AdminPage() {
                         <th className="py-3.5 px-4 font-semibold">Product & ID</th>
                         <th className="py-3.5 px-4 font-semibold">Category</th>
                         <th className="py-3.5 px-4 font-semibold">Price (AUD)</th>
+                        <th className="py-3.5 px-4 font-semibold">Display Regions</th>
                         <th className="py-3.5 px-4 font-semibold">Colors & Images</th>
                         <th className="py-3.5 px-4 font-semibold">Sizes</th>
                         <th className="py-3.5 px-4 font-semibold">Status</th>
@@ -1504,11 +1605,11 @@ export default function AdminPage() {
                     <tbody className="divide-y divide-neutral-800">
                       {filteredProducts.length === 0 && (
                         <tr>
-                          <td colSpan={7} className="py-12 text-center text-neutral-400">
+                          <td colSpan={8} className="py-12 text-center text-neutral-400">
                             <Shirt className="w-8 h-8 mx-auto mb-2 opacity-40 text-neutral-500" />
                             <p className="text-sm font-medium text-white">No products found</p>
                             <p className="text-xs text-neutral-500 mt-1">
-                              {searchQuery || productCategoryFilter !== "all" ? "Try adjusting your search or category filter." : "No products have been added yet."}
+                              {searchQuery || productCategoryFilter !== "all" || productCountryFilter !== "all" ? "Try adjusting your search or filter." : "No products have been added yet."}
                             </p>
                             <button
                               onClick={async () => {
@@ -1551,6 +1652,26 @@ export default function AdminPage() {
                             <td className="py-4 px-4 text-neutral-300">{prod.category}</td>
                             <td className="py-4 px-4 font-mono font-medium text-white">
                               {formatPrice(prod.priceAUD)}
+                            </td>
+                            <td className="py-4 px-4">
+                              <div className="flex flex-wrap gap-1">
+                                {(!prod.targetCountries || prod.targetCountries.length === 2 || prod.targetCountries.length === 0) ? (
+                                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono bg-neutral-800 text-neutral-200 border border-neutral-700" title="Visible in both Australia and Sri Lanka">
+                                    <span>🇦🇺 🇱🇰</span>
+                                    <span>Both</span>
+                                  </span>
+                                ) : prod.targetCountries.includes("Sri Lanka") ? (
+                                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono bg-emerald-950/70 text-emerald-300 border border-emerald-700/60" title="Visible in Sri Lanka only">
+                                    <span>🇱🇰</span>
+                                    <span>Sri Lanka</span>
+                                  </span>
+                                ) : (
+                                  <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded text-[10px] font-mono bg-blue-950/70 text-blue-300 border border-blue-700/60" title="Visible in Australia only">
+                                    <span>🇦🇺</span>
+                                    <span>Australia</span>
+                                  </span>
+                                )}
+                              </div>
                             </td>
                             <td className="py-4 px-4">
                               <div className="space-y-1">
@@ -2444,6 +2565,112 @@ export default function AdminPage() {
                 </div>
               </div>
 
+              {/* Display Countries / Target Regions (Australia & Sri Lanka) */}
+              <div className="pt-3 border-t border-neutral-800/80 bg-neutral-950/60 p-3.5 rounded-lg border border-neutral-800">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2.5">
+                  <div>
+                    <label className="block uppercase tracking-wider text-[11px] font-bold text-white">
+                      Display Store Countries (Target Audience) *
+                    </label>
+                    <p className="text-[11px] text-neutral-400">
+                      Choose which store country this product will be displayed in. Select single or both.
+                    </p>
+                  </div>
+                  <span className="text-[10px] font-mono px-2.5 py-1 rounded bg-neutral-800 border border-neutral-700 text-neutral-300 w-fit">
+                    {(productForm.targetCountries || ["Australia", "Sri Lanka"]).length === 2
+                      ? "🌏 Displaying in Both Countries"
+                      : (productForm.targetCountries || ["Australia", "Sri Lanka"])[0] === "Sri Lanka"
+                      ? "🇱🇰 Sri Lanka Boutique Only"
+                      : "🇦🇺 Australia Boutique Only"}
+                  </span>
+                </div>
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {/* Sri Lanka Button */}
+                  {(() => {
+                    const countries = productForm.targetCountries || ["Australia", "Sri Lanka"];
+                    const isSL = countries.includes("Sri Lanka");
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          let next: string[];
+                          if (isSL) {
+                            next = countries.filter((c) => c !== "Sri Lanka");
+                            if (next.length === 0) next = ["Australia"];
+                          } else {
+                            next = [...countries, "Sri Lanka"];
+                          }
+                          setProductForm({ ...productForm, targetCountries: next });
+                        }}
+                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-md border text-xs font-semibold tracking-wider uppercase transition-all ${
+                          isSL
+                            ? "bg-amber-950/80 border-amber-500 text-amber-200 shadow-md shadow-amber-950/40"
+                            : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-base">🇱🇰</span>
+                        <span>Sri Lanka</span>
+                        {isSL ? (
+                          <CheckCircle size={14} className="text-amber-400 ml-1" />
+                        ) : (
+                          <span className="text-[10px] text-neutral-500 ml-1">(Click to add)</span>
+                        )}
+                      </button>
+                    );
+                  })()}
+
+                  {/* Australia Button */}
+                  {(() => {
+                    const countries = productForm.targetCountries || ["Australia", "Sri Lanka"];
+                    const isAU = countries.includes("Australia");
+                    return (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          let next: string[];
+                          if (isAU) {
+                            next = countries.filter((c) => c !== "Australia");
+                            if (next.length === 0) next = ["Sri Lanka"];
+                          } else {
+                            next = [...countries, "Australia"];
+                          }
+                          setProductForm({ ...productForm, targetCountries: next });
+                        }}
+                        className={`flex items-center space-x-2 px-4 py-2.5 rounded-md border text-xs font-semibold tracking-wider uppercase transition-all ${
+                          isAU
+                            ? "bg-blue-950/80 border-blue-500 text-blue-200 shadow-md shadow-blue-950/40"
+                            : "bg-neutral-900 border-neutral-800 text-neutral-400 hover:border-neutral-600 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-base">🇦🇺</span>
+                        <span>Australia</span>
+                        {isAU ? (
+                          <CheckCircle size={14} className="text-blue-400 ml-1" />
+                        ) : (
+                          <span className="text-[10px] text-neutral-500 ml-1">(Click to add)</span>
+                        )}
+                      </button>
+                    );
+                  })()}
+
+                  {/* Select Both Shortcut */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setProductForm({ ...productForm, targetCountries: ["Australia", "Sri Lanka"] });
+                    }}
+                    className={`px-3 py-2 text-[11px] font-mono uppercase tracking-wider rounded border transition-colors ${
+                      (productForm.targetCountries || ["Australia", "Sri Lanka"]).length === 2
+                        ? "border-emerald-700 bg-emerald-950/40 text-emerald-300"
+                        : "border-neutral-800 text-neutral-500 hover:text-neutral-300 hover:border-neutral-700 bg-neutral-900"
+                    }`}
+                  >
+                    Select Both (All Regions)
+                  </button>
+                </div>
+              </div>
+
               {/* Sizes Selector (XS, S, M, L, XL, 2XL) */}
               <div className="pt-3 border-t border-neutral-800/80">
                 <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-2">
@@ -2546,79 +2773,224 @@ export default function AdminPage() {
                         </div>
                       </div>
 
-                      {/* Swatch Thumbnail input */}
-                      <div>
-                        <label className="block text-[10px] uppercase font-semibold text-neutral-400 mb-1">
-                          Swatch Thumbnail Image URL
-                        </label>
+                      {/* Swatch Thumbnail File Upload */}
+                      <div className="bg-neutral-900/60 p-3 rounded-lg border border-neutral-800/80">
+                        <div className="flex items-center justify-between mb-1.5">
+                          <label className="block text-[10px] uppercase font-bold tracking-wider text-neutral-300">
+                            Swatch Thumbnail Image (Saved to uploads/)
+                          </label>
+                          <span className="text-[10px] text-neutral-400">File upload</span>
+                        </div>
+
+                        {/* Hidden file input for swatch */}
                         <input
-                          type="text"
-                          value={color.swatchImage || ""}
-                          onChange={(e) => handleUpdateColorField(colorIdx, "swatchImage", e.target.value)}
-                          placeholder="https://... swatch preview image"
-                          className="w-full bg-neutral-900 border border-neutral-800 rounded p-2 text-[11px] text-white focus:outline-none"
+                          type="file"
+                          accept="image/*"
+                          ref={(el) => {
+                            swatchFileInputs.current[colorIdx] = el;
+                          }}
+                          onChange={(e) => {
+                            const file = e.target.files?.[0];
+                            if (file) handleUploadSwatch(colorIdx, file);
+                          }}
+                          className="hidden"
                         />
+
+                        <div className="flex items-center gap-3">
+                          {color.swatchImage ? (
+                            <div className="flex items-center gap-3 w-full">
+                              <div className="relative w-12 h-12 rounded border border-neutral-700 overflow-hidden bg-neutral-950 flex-shrink-0">
+                                <img
+                                  src={color.swatchImage}
+                                  alt="Swatch preview"
+                                  className="w-full h-full object-cover"
+                                />
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="text-[11px] font-mono text-neutral-300 truncate" title={color.swatchImage}>
+                                  {color.swatchImage}
+                                </p>
+                                <div className="flex items-center gap-2 mt-1">
+                                  <button
+                                    type="button"
+                                    disabled={uploadingSwatchIdx === colorIdx}
+                                    onClick={() => swatchFileInputs.current[colorIdx]?.click()}
+                                    className="text-[10px] font-medium text-amber-400 hover:text-amber-300 underline"
+                                  >
+                                    {uploadingSwatchIdx === colorIdx ? "Uploading..." : "Replace File"}
+                                  </button>
+                                  <span className="text-neutral-600">|</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => handleUpdateColorField(colorIdx, "swatchImage", "")}
+                                    className="text-[10px] font-medium text-red-400 hover:text-red-300 underline"
+                                  >
+                                    Remove
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          ) : (
+                            <button
+                              type="button"
+                              disabled={uploadingSwatchIdx === colorIdx}
+                              onClick={() => swatchFileInputs.current[colorIdx]?.click()}
+                              className="flex items-center space-x-2 px-3 py-2 bg-neutral-800 hover:bg-neutral-700 text-white rounded border border-neutral-700 text-xs transition-colors"
+                            >
+                              {uploadingSwatchIdx === colorIdx ? (
+                                <>
+                                  <RefreshCw size={13} className="animate-spin text-amber-400" />
+                                  <span>Uploading Swatch...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={13} className="text-amber-400" />
+                                  <span>Upload Swatch Image File</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                        </div>
                       </div>
 
-                      {/* 6 Images Grid for this Color */}
-                      <div>
-                        <label className="block text-[10px] uppercase font-semibold text-neutral-400 mb-1.5">
-                          Product Photos for {color.name || "Color"} (Up to 6 images)
-                        </label>
+                      {/* 6 Images Grid & File Upload for this Color */}
+                      <div className="bg-neutral-900/60 p-3 rounded-lg border border-neutral-800/80">
+                        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2">
+                          <div>
+                            <label className="block text-[10px] uppercase font-bold tracking-wider text-neutral-300">
+                              Product Photos for {color.name || "Color"} (Up to 6 images)
+                            </label>
+                            <p className="text-[10px] text-neutral-400">
+                              Upload images directly from your computer to the server's uploads folder.
+                            </p>
+                          </div>
+                          <span className="text-[10px] font-mono px-2 py-0.5 rounded bg-neutral-800 text-neutral-300">
+                            {color.images?.length || 0} / 6 Photos
+                          </span>
+                        </div>
+
+                        {/* Hidden multi-file input */}
+                        <input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          ref={(el) => {
+                            photosFileInputs.current[colorIdx] = el;
+                          }}
+                          onChange={(e) => {
+                            if (e.target.files && e.target.files.length > 0) {
+                              handleUploadColorPhotos(colorIdx, e.target.files);
+                            }
+                          }}
+                          className="hidden"
+                        />
                         
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-2">
+                        {/* Image Thumbnails Grid */}
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-3">
                           {color.images?.map((imgUrl, imgIdx) => (
-                            <div key={imgIdx} className="relative aspect-[3/4] bg-neutral-900 rounded overflow-hidden group border border-neutral-800">
-                              <img src={imgUrl} alt="Product angle" className="w-full h-full object-cover" />
-                              <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                            <div key={imgIdx} className="relative aspect-[3/4] bg-neutral-950 rounded overflow-hidden group border border-neutral-800">
+                              <img src={imgUrl} alt={`Angle ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                              <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
                                   type="button"
                                   onClick={() => handleRemoveImageFromColor(colorIdx, imgIdx)}
-                                  className="p-1 bg-red-600/80 text-white rounded-full hover:bg-red-600"
+                                  className="p-1.5 bg-red-600/90 text-white rounded-full hover:bg-red-600 transition-transform hover:scale-110"
                                   title="Delete Image"
                                 >
-                                  <Trash2 size={12} />
+                                  <Trash2 size={13} />
                                 </button>
                               </div>
-                              <span className="absolute bottom-1 left-1 bg-black/70 text-[9px] font-mono px-1 rounded text-white">
+                              <span className="absolute bottom-1 left-1 bg-black/80 text-[9px] font-mono px-1.5 py-0.5 rounded text-white">
                                 #{imgIdx + 1}
                               </span>
                             </div>
                           ))}
-                        </div>
 
-                        {/* Add Image Input row */}
-                        {(color.images?.length || 0) < 6 && (
-                          <div className="flex items-center space-x-2">
-                            <input
-                              type="text"
-                              id={`new-img-input-${colorIdx}`}
-                              placeholder="Paste photo URL and click Add (e.g. Unsplash URL)..."
-                              className="flex-1 bg-neutral-900 border border-neutral-800 rounded p-2 text-xs text-white focus:outline-none focus:border-neutral-500"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter") {
-                                  e.preventDefault();
-                                  const val = (e.target as HTMLInputElement).value;
-                                  if (val) {
-                                    handleAddImageToColor(colorIdx, val);
-                                    (e.target as HTMLInputElement).value = "";
-                                  }
-                                }
-                              }}
-                            />
+                          {/* Upload Box Slot if under 6 images */}
+                          {(color.images?.length || 0) < 6 && (
                             <button
                               type="button"
-                              onClick={() => {
-                                const input = document.getElementById(`new-img-input-${colorIdx}`) as HTMLInputElement;
-                                if (input && input.value) {
-                                  handleAddImageToColor(colorIdx, input.value);
-                                  input.value = "";
-                                }
-                              }}
-                              className="bg-neutral-800 hover:bg-neutral-700 text-white px-3 py-2 rounded text-xs uppercase font-medium"
+                              disabled={uploadingPhotosIdx === colorIdx}
+                              onClick={() => photosFileInputs.current[colorIdx]?.click()}
+                              className="aspect-[3/4] border-2 border-dashed border-neutral-700 hover:border-neutral-500 rounded flex flex-col items-center justify-center p-2 text-center bg-neutral-950/50 hover:bg-neutral-950 transition-colors text-neutral-400 hover:text-white"
                             >
-                              Add Image
+                              {uploadingPhotosIdx === colorIdx ? (
+                                <div className="flex flex-col items-center space-y-1">
+                                  <RefreshCw size={18} className="animate-spin text-amber-400" />
+                                  <span className="text-[10px] font-mono text-amber-400">Saving...</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col items-center space-y-1.5">
+                                  <div className="p-2 rounded-full bg-neutral-800">
+                                    <Upload size={14} className="text-white" />
+                                  </div>
+                                  <span className="text-[10px] font-medium leading-tight">
+                                    Upload Photo
+                                  </span>
+                                  <span className="text-[9px] text-neutral-400 font-mono">
+                                    (6 max)
+                                  </span>
+                                </div>
+                              )}
                             </button>
+                          )}
+                        </div>
+
+                        {/* Actions bar: File upload button + optional external link input */}
+                        {(color.images?.length || 0) < 6 && (
+                          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-2 border-t border-neutral-800">
+                            <button
+                              type="button"
+                              disabled={uploadingPhotosIdx === colorIdx}
+                              onClick={() => photosFileInputs.current[colorIdx]?.click()}
+                              className="bg-amber-600 hover:bg-amber-500 text-black font-semibold px-4 py-2 rounded text-xs flex items-center justify-center space-x-2 transition-colors"
+                            >
+                              {uploadingPhotosIdx === colorIdx ? (
+                                <>
+                                  <RefreshCw size={14} className="animate-spin text-black" />
+                                  <span>Uploading Files to uploads/...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Upload size={14} />
+                                  <span>Choose File(s) to Upload</span>
+                                </>
+                              )}
+                            </button>
+
+                            <span className="text-neutral-400 text-center text-[10px] font-mono sm:px-1">or URL:</span>
+
+                            <div className="flex-1 flex items-center space-x-1">
+                              <input
+                                type="text"
+                                id={`new-img-input-${colorIdx}`}
+                                placeholder="Paste image URL (optional fallback)..."
+                                className="flex-1 bg-neutral-950 border border-neutral-800 rounded p-1.5 text-xs text-white focus:outline-none focus:border-neutral-500"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") {
+                                    e.preventDefault();
+                                    const val = (e.target as HTMLInputElement).value;
+                                    if (val) {
+                                      handleAddImageToColor(colorIdx, val);
+                                      (e.target as HTMLInputElement).value = "";
+                                    }
+                                  }
+                                }}
+                              />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  const input = document.getElementById(`new-img-input-${colorIdx}`) as HTMLInputElement;
+                                  if (input && input.value) {
+                                    handleAddImageToColor(colorIdx, input.value);
+                                    input.value = "";
+                                  }
+                                }}
+                                className="bg-neutral-800 hover:bg-neutral-700 text-white px-2.5 py-1.5 rounded text-xs font-medium"
+                              >
+                                Add
+                              </button>
+                            </div>
                           </div>
                         )}
                       </div>
