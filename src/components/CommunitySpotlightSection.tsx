@@ -1,8 +1,10 @@
 "use client";
 
 import React, { useState, useEffect } from "react";
+import Link from "next/link";
 import { COMMUNITY_SPOTLIGHT_DATA, CommunitySpotlight, fetchCommunitySpotlight } from "../data/data";
 import { ChevronRight, Camera } from "lucide-react";
+import { communitySpotlightApi } from "../lib/api";
 
 export const CommunitySpotlightSection: React.FC = () => {
   const [spotlights, setSpotlights] = useState<CommunitySpotlight[]>(COMMUNITY_SPOTLIGHT_DATA);
@@ -10,18 +12,36 @@ export const CommunitySpotlightSection: React.FC = () => {
 
   useEffect(() => {
     async function loadData() {
-      const data = await fetchCommunitySpotlight();
-      setSpotlights(data);
+      try {
+        const res = await communitySpotlightApi.list({ activeOnly: true });
+        if (res.data?.success && res.data.spotlights && res.data.spotlights.length > 0) {
+          const mapped: CommunitySpotlight[] = res.data.spotlights.map((s) => ({
+            id: s.id,
+            username: s.username,
+            image: s.image,
+            productTagged: s.productTagged,
+          }));
+          setSpotlights(mapped);
+          return;
+        }
+      } catch (err) {
+        console.warn("Could not fetch remote spotlight items, falling back to static data:", err);
+      }
+
+      const fallback = await fetchCommunitySpotlight();
+      setSpotlights(fallback);
     }
     loadData();
   }, []);
 
   const handleNext = () => {
-    setStartIndex((prev) => (prev + 1) % (spotlights.length - 4));
+    if (spotlights.length <= 5) return;
+    const maxStart = Math.max(1, spotlights.length - 4);
+    setStartIndex((prev) => (prev + 1) % maxStart);
   };
 
   // Slice 5 items to display side-by-side
-  const visibleItems = spotlights.slice(startIndex, startIndex + 5);
+  const visibleItems = spotlights.length <= 5 ? spotlights : spotlights.slice(startIndex, startIndex + 5);
 
   return (
     <section className="py-20 md:py-28 px-4 md:px-8 bg-white text-black border-b border-neutral-100 relative">

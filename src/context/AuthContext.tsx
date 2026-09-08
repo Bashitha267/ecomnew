@@ -8,10 +8,12 @@ export interface AuthUser {
   name: string;
   username: string;
   email: string;
+  country?: string;
   phone?: string;
   address?: string;
   role: "admin" | "customer";
   avatar?: string;
+  createdAt?: string;
 }
 
 interface AuthContextType {

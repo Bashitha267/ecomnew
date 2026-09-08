@@ -140,18 +140,10 @@ export const productsApi = {
   list: (params?: Record<string, string | number | boolean>) =>
     api.get('/api/products', {
       params: { ...params, _t: Date.now() },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     }),
   getById: (id: string) =>
     api.get(`/api/products/${id}`, {
       params: { _t: Date.now() },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     }),
   create: (data: Record<string, unknown>) =>
     api.post('/api/products', data),
@@ -177,18 +169,10 @@ export const ordersApi = {
   list: (params?: Record<string, string | number>) =>
     api.get('/api/orders', {
       params: { ...params, _t: Date.now() },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     }),
   getById: (id: string) =>
     api.get(`/api/orders/${id}`, {
       params: { _t: Date.now() },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     }),
   create: (data: Record<string, unknown>) =>
     api.post('/api/orders', data),
@@ -205,18 +189,10 @@ export const categoriesApi = {
   list: () =>
     api.get('/api/categories', {
       params: { _t: Date.now() },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     }),
   getById: (id: string) =>
     api.get(`/api/categories/${id}`, {
       params: { _t: Date.now() },
-      headers: {
-        'Cache-Control': 'no-cache, no-store, must-revalidate',
-        'Pragma': 'no-cache',
-      },
     }),
   create: (data: Record<string, unknown>) => api.post('/api/categories', data),
   update: (id: string, data: Record<string, unknown>) => api.put(`/api/categories/${id}`, data),
@@ -272,4 +248,94 @@ export const homepageVideosApi = {
     });
   },
   reset: () => api.post<{ success: boolean; message: string }>('/api/homepage-videos/reset'),
+};
+
+// ─── USERS ─────────────────────────────────────────────────────────────────
+export interface UserItem {
+  id: string;
+  username: string;
+  email: string;
+  name: string;
+  role: 'admin' | 'customer';
+  country?: string;
+  phone?: string;
+  address?: string;
+  avatar?: string;
+  createdAt?: string;
+  ordersCount?: number;
+}
+
+export interface UserStats {
+  totalUsers: number;
+  adminCount: number;
+  customerCount: number;
+  countries: { [key: string]: number };
+}
+
+export const usersApi = {
+  list: (params?: { role?: string; country?: string; search?: string; page?: number; limit?: number }) =>
+    api.get<{ success: boolean; users: UserItem[]; total: number; stats: UserStats }>('/api/users', {
+      params: { ...params, _t: Date.now() },
+    }),
+  create: (data: {
+    name: string;
+    email: string;
+    password: string;
+    role?: 'admin' | 'customer';
+    country?: string;
+    phone?: string;
+    address?: string;
+  }) => api.post<{ success: boolean; message: string; user: UserItem }>('/api/users', data),
+  update: (id: string, data: Partial<UserItem> & { password?: string }) =>
+    api.put<{ success: boolean; message: string; user: UserItem }>(`/api/users/${id}`, data),
+  delete: (id: string) => api.delete<{ success: boolean; message: string }>(`/api/users/${id}`),
+};
+
+// ─── COMMUNITY SPOTLIGHT ───────────────────────────────────────────────────
+export interface CommunitySpotlightItem {
+  id: string;
+  username: string;
+  image: string;
+  productTagged?: string;
+  link?: string;
+  sortOrder?: number;
+  isActive: number | boolean;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export const communitySpotlightApi = {
+  list: (params?: { activeOnly?: boolean }) =>
+    api.get<{ success: boolean; spotlights: CommunitySpotlightItem[] }>('/api/community-spotlight', {
+      params: { ...params, _t: Date.now() },
+    }),
+  uploadImage: (file: File) => {
+    const formData = new FormData();
+    formData.append('image', file);
+    return api.post<{ success: boolean; imageUrl: string; filename: string }>(
+      '/api/community-spotlight/upload',
+      formData,
+      { headers: { 'Content-Type': 'multipart/form-data' } }
+    );
+  },
+  create: (data: Partial<CommunitySpotlightItem> | FormData) => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    return api.post<{ success: boolean; message: string; spotlight: CommunitySpotlightItem }>(
+      '/api/community-spotlight',
+      data,
+      { headers }
+    );
+  },
+  update: (id: string, data: Partial<CommunitySpotlightItem> | FormData) => {
+    const headers = data instanceof FormData ? { 'Content-Type': 'multipart/form-data' } : {};
+    return api.put<{ success: boolean; message: string; spotlight: CommunitySpotlightItem }>(
+      `/api/community-spotlight/${id}`,
+      data,
+      { headers }
+    );
+  },
+  delete: (id: string) =>
+    api.delete<{ success: boolean; message: string }>(`/api/community-spotlight/${id}`),
+  reset: () =>
+    api.post<{ success: boolean; message: string }>('/api/community-spotlight/reset'),
 };

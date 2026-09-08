@@ -18,6 +18,8 @@ import {
 } from "../../data/data";
 import { RegionalOrderMap } from "../../components/admin/RegionalOrderMap";
 import { HomepageVideoManager } from "../../components/admin/HomepageVideoManager";
+import { CommunitySpotlightManager } from "../../components/admin/CommunitySpotlightManager";
+import { UserManager } from "../../components/admin/UserManager";
 import { getApiError } from "../../lib/api";
 import {
   LayoutDashboard,
@@ -57,6 +59,9 @@ import {
   TrendingDown,
   LogOut,
   Info,
+  Users,
+  Camera,
+  Sparkles,
 } from "lucide-react";
 
 const ALL_SIZES: ProductSize[] = ["XS", "S", "M", "L", "XL", "2XL"];
@@ -87,7 +92,8 @@ export default function AdminPage() {
   const { formatPrice } = useCurrency();
 
   // Sidebar navigation state
-  const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "categories" | "products" | "reviews" | "reports" | "videos">("dashboard");
+  const [activeTab, setActiveTab] = useState<"dashboard" | "orders" | "categories" | "products" | "reviews" | "reports" | "videos" | "users">("dashboard");
+  const [homepageSubTab, setHomepageSubTab] = useState<"videos" | "spotlight">("videos");
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -873,7 +879,22 @@ export default function AdminPage() {
               }`}
             >
               <Video size={18} />
-              {!sidebarCollapsed && <span>Homepage Videos</span>}
+              {!sidebarCollapsed && <span>Homepage Content</span>}
+            </button>
+
+            <button
+              onClick={() => {
+                setActiveTab("users");
+                setMobileSidebarOpen(false);
+              }}
+              className={`w-full flex items-center space-x-3 px-3 py-3 rounded-md transition-all ${
+                activeTab === "users"
+                  ? "bg-white text-black font-bold shadow"
+                  : "text-neutral-400 hover:text-white hover:bg-neutral-800/60"
+              }`}
+            >
+              <Users size={18} />
+              {!sidebarCollapsed && <span>Manage Users</span>}
             </button>
           </nav>
         </div>
@@ -914,7 +935,8 @@ export default function AdminPage() {
               {activeTab === "products" && "Catalog & Inventory"}
               {activeTab === "reviews" && "Customer Reviews & Media"}
               {activeTab === "reports" && "Reports & Performance Analytics"}
-              {activeTab === "videos" && "Homepage Video Management"}
+              {activeTab === "videos" && "Homepage Content Management"}
+              {activeTab === "users" && "User & Access Management"}
             </h2>
           </div>
 
@@ -2245,9 +2267,47 @@ export default function AdminPage() {
             </div>
           )}
 
-          {/* HOMEPAGE VIDEOS TAB */}
+          {/* HOMEPAGE CONTENT TAB (Videos & Community Spotlight) */}
           {activeTab === "videos" && (
-            <HomepageVideoManager />
+            <div className="space-y-6">
+              {/* Sub navigation for Homepage management */}
+              <div className="flex items-center space-x-2 border-b border-neutral-800 pb-3">
+                <button
+                  onClick={() => setHomepageSubTab("videos")}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded text-xs font-mono uppercase tracking-wider transition-all ${
+                    homepageSubTab === "videos"
+                      ? "bg-white text-black font-bold shadow"
+                      : "bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800"
+                  }`}
+                >
+                  <Video size={14} />
+                  <span>Hero & Editorial Videos</span>
+                </button>
+
+                <button
+                  onClick={() => setHomepageSubTab("spotlight")}
+                  className={`flex items-center space-x-2 px-4 py-2 rounded text-xs font-mono uppercase tracking-wider transition-all ${
+                    homepageSubTab === "spotlight"
+                      ? "bg-white text-black font-bold shadow"
+                      : "bg-neutral-900 text-neutral-400 hover:text-white hover:bg-neutral-800"
+                  }`}
+                >
+                  <Camera size={14} />
+                  <span>Community Spotlight</span>
+                </button>
+              </div>
+
+              {homepageSubTab === "videos" ? (
+                <HomepageVideoManager />
+              ) : (
+                <CommunitySpotlightManager />
+              )}
+            </div>
+          )}
+
+          {/* MANAGE USERS TAB */}
+          {activeTab === "users" && (
+            <UserManager />
           )}
 
         </div>
