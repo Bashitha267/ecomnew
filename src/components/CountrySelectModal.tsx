@@ -1,12 +1,14 @@
-﻿"use client";
+"use client";
 
 import React, { useState, useEffect } from "react";
+import { usePathname } from "next/navigation";
 import { useStore } from "../context/StoreContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
-import { Globe } from "lucide-react";
+import { Globe, ArrowRight } from "lucide-react";
 
 export const CountrySelectModal: React.FC = () => {
+  const pathname = usePathname();
   const { selectedCountry, setSelectedCountry } = useStore();
   const { setCurrency } = useCurrency();
   const { isAuthenticated, isLoading: authLoading } = useAuth();
@@ -18,22 +20,30 @@ export const CountrySelectModal: React.FC = () => {
     // If auth state is still resolving, wait
     if (authLoading) return;
 
-    // Rule: If user is logged in, DO NOT ask
+    // Rule 1: If user is logged in, DO NOT ask
     if (isAuthenticated) {
       setIsOpen(false);
       return;
     }
 
-    // Check if visitor has already chosen a country before
-    const hasChosen = typeof window !== "undefined" && localStorage.getItem("cv_country_selected");
-    if (!hasChosen) {
-      // Show modal to new visitors
-      const timer = setTimeout(() => {
-        setIsOpen(true);
-      }, 700);
-      return () => clearTimeout(timer);
+    // Rule 2: Don't show popup modal over login/admin pages (login has its own country selector)
+    if (pathname === "/login" || pathname?.startsWith("/admin")) {
+      setIsOpen(false);
+      return;
     }
-  }, [isAuthenticated, authLoading]);
+
+    // Rule 3: First check if we saved the country in cache
+    const cachedCountry = typeof window !== "undefined" ? localStorage.getItem("cv_selected_country") : null;
+    const hasChosen = typeof window !== "undefined" ? localStorage.getItem("cv_country_selected") : null;
+
+    if (cachedCountry === "Australia" || cachedCountry === "Sri Lanka" || hasChosen === "true") {
+      setIsOpen(false);
+      return;
+    }
+
+    // Else: Immediately show the modal tab asking which country!
+    setIsOpen(true);
+  }, [isAuthenticated, authLoading, pathname]);
 
   if (!isOpen) return null;
 

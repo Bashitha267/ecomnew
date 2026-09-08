@@ -77,7 +77,15 @@ const CART_STORAGE_KEY = "carlton_valley_cart_v3";
 export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { user, isAuthenticated } = useAuth();
   const [allProducts, setAllProducts] = useState<FullProduct[]>([]);
-  const [selectedCountry, setSelectedCountryState] = useState<"Australia" | "Sri Lanka">("Australia");
+  const [selectedCountry, setSelectedCountryState] = useState<"Australia" | "Sri Lanka">(() => {
+    if (typeof window !== "undefined") {
+      try {
+        const saved = localStorage.getItem("cv_selected_country");
+        if (saved === "Sri Lanka" || saved === "Australia") return saved;
+      } catch { /* ignore */ }
+    }
+    return "Australia";
+  });
   const [categories, setCategories] = useState<Category[]>([]);
   const [orders, setOrders]         = useState<Order[]>([]);
   const [cart, setCart]             = useState<CartItem[]>([]);
@@ -142,13 +150,14 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   }, []);
 
   const refreshOrders = useCallback(async () => {
+    if (!isAuthenticated) return;
     try {
       const { data } = await ordersApi.list();
       setOrders(data.data || []);
     } catch (err) {
       console.warn("Failed to load orders:", getApiError(err));
     }
-  }, []);
+  }, [isAuthenticated]);
 
   useEffect(() => {
     // Load cart from localStorage (client-side only)
@@ -158,9 +167,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     } catch { /* ignore */ }
 
     // Load server data in parallel
-    Promise.all([refreshProducts(), refreshCategories(), refreshOrders()])
-      .finally(() => setIsLoading(false));
-  }, [refreshProducts, refreshCategories, refreshOrders]);
+    Promise.all([
+      refreshProducts(),
+      refreshCategories(),
+      isAuthenticated ? refreshOrders() : Promise.resolve(),
+    ]).finally(() => setIsLoading(false));
+  }, [refreshProducts, refreshCategories, refreshOrders, isAuthenticated]);
 
   // Whenever user authenticates (e.g. admin logs in), automatically fetch orders immediately!
   useEffect(() => {

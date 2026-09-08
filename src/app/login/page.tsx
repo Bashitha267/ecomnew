@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
+import { useStore } from "../../context/StoreContext";
 import {
   Lock,
   User,
@@ -24,6 +25,7 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const { login, register } = useAuth();
+  const { selectedCountry, setSelectedCountry } = useStore();
 
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
@@ -31,7 +33,13 @@ export default function LoginPage() {
   const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
-  const [country, setCountry] = useState<"Australia" | "Sri Lanka">("Australia");
+  const [country, setCountry] = useState<"Australia" | "Sri Lanka">(() => {
+    if (typeof window !== "undefined") {
+      const cached = localStorage.getItem("cv_selected_country");
+      if (cached === "Sri Lanka" || cached === "Australia") return cached;
+    }
+    return "Australia";
+  });
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
@@ -290,7 +298,7 @@ export default function LoginPage() {
                   {/* Email Address */}
                   <div className="space-y-1 animate-fadeIn">
                     <label className="block text-[9px] font-mono uppercase tracking-[0.2em] text-neutral-300">
-                      Email Address
+                      Email Address *
                     </label>
                     <div className="relative flex items-center">
                       <div className="absolute left-3.5 z-20 flex items-center pointer-events-none text-white">
@@ -304,6 +312,59 @@ export default function LoginPage() {
                         placeholder="name@example.com"
                         className="w-full bg-white/[0.08] hover:bg-white/[0.12] focus:bg-white/[0.15] border border-white/25 focus:border-white px-3 py-2.5 pl-11 text-xs text-white placeholder-white/35 focus:outline-none transition-all rounded-lg sm:rounded-none font-mono backdrop-blur-md shadow-inner"
                       />
+                    </div>
+                  </div>
+
+                  {/* Select Country (Australia vs Sri Lanka) — ALWAYS REQUIRED */}
+                  <div className="space-y-1.5 animate-fadeIn pt-1">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[9px] font-mono uppercase tracking-[0.2em] text-white font-semibold">
+                        Select Destination Country *
+                      </label>
+                      <span className="text-[8.5px] font-mono text-neutral-400">Required</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setCountry("Australia")}
+                        className={`p-3 rounded-lg sm:rounded-none border text-left transition-all flex items-center space-x-2.5 cursor-pointer ${
+                          country === "Australia"
+                            ? "bg-white text-black border-white shadow-lg"
+                            : "bg-white/[0.06] border-white/20 text-neutral-300 hover:border-white/40 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-2xl">🇦🇺</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold leading-tight uppercase tracking-wider">Australia</p>
+                          <p className={`text-[9px] font-mono ${country === "Australia" ? "text-neutral-700 font-semibold" : "text-neutral-400"}`}>
+                            AUD ($)
+                          </p>
+                        </div>
+                        {country === "Australia" && (
+                          <CheckCircle2 size={15} className="text-black shrink-0" />
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={() => setCountry("Sri Lanka")}
+                        className={`p-3 rounded-lg sm:rounded-none border text-left transition-all flex items-center space-x-2.5 cursor-pointer ${
+                          country === "Sri Lanka"
+                            ? "bg-white text-black border-white shadow-lg"
+                            : "bg-white/[0.06] border-white/20 text-neutral-300 hover:border-white/40 hover:text-white"
+                        }`}
+                      >
+                        <span className="text-2xl">🇱🇰</span>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-xs font-bold leading-tight uppercase tracking-wider">Sri Lanka</p>
+                          <p className={`text-[9px] font-mono ${country === "Sri Lanka" ? "text-neutral-700 font-semibold" : "text-neutral-400"}`}>
+                            LKR (Rs)
+                          </p>
+                        </div>
+                        {country === "Sri Lanka" && (
+                          <CheckCircle2 size={15} className="text-black shrink-0" />
+                        )}
+                      </button>
                     </div>
                   </div>
 
@@ -364,56 +425,6 @@ export default function LoginPage() {
                         placeholder="Street, City, State, Postal Code"
                         className="w-full bg-white/[0.08] hover:bg-white/[0.12] focus:bg-white/[0.15] border border-white/25 focus:border-white px-3 py-2.5 pl-11 text-xs text-white placeholder-white/35 focus:outline-none transition-all rounded-lg sm:rounded-none backdrop-blur-md shadow-inner"
                       />
-                    </div>
-                  </div>
-
-                  {/* Select Country (Australia vs Sri Lanka) */}
-                  <div className="space-y-1.5 animate-fadeIn pt-1">
-                    <label className="block text-[9px] font-mono uppercase tracking-[0.2em] text-neutral-300">
-                      Select Country / Region *
-                    </label>
-                    <div className="grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setCountry("Australia")}
-                        className={`p-2.5 rounded-lg sm:rounded-none border text-left transition-all flex items-center space-x-2.5 cursor-pointer ${
-                          country === "Australia"
-                            ? "bg-white text-black border-white shadow-lg"
-                            : "bg-white/[0.06] border-white/20 text-neutral-300 hover:border-white/40 hover:text-white"
-                        }`}
-                      >
-                        <span className="text-xl">🇦🇺</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold leading-tight uppercase tracking-wider">Australia</p>
-                          <p className={`text-[9px] font-mono ${country === "Australia" ? "text-neutral-700" : "text-neutral-400"}`}>
-                            AUD ($)
-                          </p>
-                        </div>
-                        {country === "Australia" && (
-                          <CheckCircle2 size={15} className="text-black shrink-0" />
-                        )}
-                      </button>
-
-                      <button
-                        type="button"
-                        onClick={() => setCountry("Sri Lanka")}
-                        className={`p-2.5 rounded-lg sm:rounded-none border text-left transition-all flex items-center space-x-2.5 cursor-pointer ${
-                          country === "Sri Lanka"
-                            ? "bg-white text-black border-white shadow-lg"
-                            : "bg-white/[0.06] border-white/20 text-neutral-300 hover:border-white/40 hover:text-white"
-                        }`}
-                      >
-                        <span className="text-xl">🇱🇰</span>
-                        <div className="flex-1 min-w-0">
-                          <p className="text-xs font-semibold leading-tight uppercase tracking-wider">Sri Lanka</p>
-                          <p className={`text-[9px] font-mono ${country === "Sri Lanka" ? "text-neutral-700" : "text-neutral-400"}`}>
-                            LKR (Rs)
-                          </p>
-                        </div>
-                        {country === "Sri Lanka" && (
-                          <CheckCircle2 size={15} className="text-black shrink-0" />
-                        )}
-                      </button>
                     </div>
                   </div>
                 </>
