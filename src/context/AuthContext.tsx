@@ -31,6 +31,7 @@ interface AuthContextType {
     name: string;
     email: string;
     password: string;
+    username?: string;
     phone?: string;
     address?: string;
     country?: string;
@@ -118,6 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     name: string;
     email: string;
     password: string;
+    username?: string;
     phone?: string;
     address?: string;
     country?: string;

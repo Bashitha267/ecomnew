@@ -127,7 +127,7 @@ export function getApiError(err: unknown): string {
 export const authApi = {
   login: (email: string, password: string) =>
     api.post('/api/auth/login', { email, password }),
-  register: (data: { name: string; email: string; password: string; phone?: string; address?: string; country?: string }) =>
+  register: (data: { name: string; email: string; password: string; username?: string; phone?: string; address?: string; country?: string }) =>
     api.post('/api/auth/register', data),
   refresh: (refreshToken: string) =>
     api.post('/api/auth/refresh', { refreshToken }),

@@ -28,6 +28,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<"signin" | "signup">("signin");
   const [fullName, setFullName] = useState("");
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
+  const [username, setUsername] = useState("");
   const [phone, setPhone] = useState("");
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState<"Australia" | "Sri Lanka">("Australia");
@@ -56,10 +57,17 @@ export default function LoginPage() {
       return;
     }
 
+    if (mode === "signup" && password.length < 6) {
+      setIsLoading(false);
+      setErrorMessage("Password must be at least 6 characters.");
+      return;
+    }
+
     if (mode === "signup") {
       const regResult = await register({
         name: fullName.trim(),
         email: usernameOrEmail.trim(),
+        username: username.trim() || undefined,
         password,
         phone: phone.trim(),
         address: address.trim(),
@@ -294,6 +302,28 @@ export default function LoginPage() {
                         value={usernameOrEmail}
                         onChange={(e) => setUsernameOrEmail(e.target.value)}
                         placeholder="name@example.com"
+                        className="w-full bg-white/[0.08] hover:bg-white/[0.12] focus:bg-white/[0.15] border border-white/25 focus:border-white px-3 py-2.5 pl-11 text-xs text-white placeholder-white/35 focus:outline-none transition-all rounded-lg sm:rounded-none font-mono backdrop-blur-md shadow-inner"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Username (Optional / Custom Member ID) */}
+                  <div className="space-y-1 animate-fadeIn">
+                    <div className="flex justify-between items-center">
+                      <label className="block text-[9px] font-mono uppercase tracking-[0.2em] text-neutral-300">
+                        Username (Optional)
+                      </label>
+                      <span className="text-[8.5px] font-mono text-neutral-400">Atelier Member ID</span>
+                    </div>
+                    <div className="relative flex items-center">
+                      <div className="absolute left-3.5 z-20 flex items-center pointer-events-none text-white/70">
+                        <span className="font-mono text-xs font-bold">@</span>
+                      </div>
+                      <input
+                        type="text"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value.toLowerCase().replace(/[^a-z0-9_.-]/g, ""))}
+                        placeholder="e.g. alexander_w (or auto-generated)"
                         className="w-full bg-white/[0.08] hover:bg-white/[0.12] focus:bg-white/[0.15] border border-white/25 focus:border-white px-3 py-2.5 pl-11 text-xs text-white placeholder-white/35 focus:outline-none transition-all rounded-lg sm:rounded-none font-mono backdrop-blur-md shadow-inner"
                       />
                     </div>
