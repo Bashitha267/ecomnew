@@ -90,8 +90,8 @@ export default function LoginPage() {
 
       setSuccessMessage(`Welcome to Carlton Valley Atelier, ${fullName.trim()}. Profile created for ${country}.`);
       setTimeout(() => {
-        router.push("/");
-      }, 600);
+        window.location.href = "/";
+      }, 500);
       return;
     }
 
@@ -106,13 +106,13 @@ export default function LoginPage() {
     if (result.role === "admin") {
       setSuccessMessage("Welcome, Administrator. Entering Atelier Control...");
       setTimeout(() => {
-        router.push("/admin");
-      }, 500);
+        window.location.href = "/admin";
+      }, 400);
     } else {
       setSuccessMessage(`Welcome back, ${result.name}. Loading boutique...`);
       setTimeout(() => {
-        router.push("/");
-      }, 500);
+        window.location.href = "/";
+      }, 400);
     }
   };
 
