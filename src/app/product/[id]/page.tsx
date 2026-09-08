@@ -1,9 +1,10 @@
 "use client";
 
-import React, { useState, use } from "react";
+import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useStore } from "../../../context/StoreContext";
 import { useCurrency } from "../../../context/CurrencyContext";
+import { analyticsApi } from "../../../lib/api";
 import { Navbar } from "../../../components/Navbar";
 import { Footer } from "../../../components/Footer";
 import { ProductSize, ProductReview, FullProduct } from "../../../data/data";
@@ -81,6 +82,13 @@ export default function ProductDetailPage({ params }: PageProps) {
   const galleryImages = currentColor?.images || [];
   const afterpayInstallment = (product.priceAUD / 4).toFixed(2);
 
+  // ── Analytics: fire a 'view' event once when the product page loads ──────
+  useEffect(() => {
+    if (product?.id) {
+      analyticsApi.track(product.id, 'view');
+    }
+  }, [product?.id]);
+
   const handleAddToCart = () => {
     addToCart({
       productId: product.id,
@@ -91,6 +99,8 @@ export default function ProductDetailPage({ params }: PageProps) {
       image: galleryImages[0] || currentColor.swatchImage,
       quantity: quantity,
     });
+    // ── Analytics: fire an 'add_to_bag' event ──────────────────────────────
+    analyticsApi.track(product.id, 'add_to_bag');
     setIsAddedToBag(true);
     setTimeout(() => setIsAddedToBag(false), 2500);
   };

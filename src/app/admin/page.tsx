@@ -20,7 +20,7 @@ import { RegionalOrderMap } from "../../components/admin/RegionalOrderMap";
 import { HomepageVideoManager } from "../../components/admin/HomepageVideoManager";
 import { CommunitySpotlightManager } from "../../components/admin/CommunitySpotlightManager";
 import { UserManager } from "../../components/admin/UserManager";
-import { getApiError, productsApi } from "../../lib/api";
+import { getApiError, productsApi, analyticsApi } from "../../lib/api";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -131,6 +131,17 @@ export default function AdminPage() {
   // Reports state
   const [reportTimeframe, setReportTimeframe] = useState<"7d" | "30d" | "all">("30d");
 
+  // Real analytics data from server (views / clicks / add_to_bag per product)
+  const [analyticsMap, setAnalyticsMap] = useState<Record<string, { views: number; clicks: number; addToBag: number }>>({});
+
+  useEffect(() => {
+    if (activeTab !== "reports") return;
+    const days = reportTimeframe === "7d" ? 7 : reportTimeframe === "30d" ? 30 : 0;
+    analyticsApi.summary(days)
+      .then(res => { if (res.data?.success) setAnalyticsMap(res.data.data); })
+      .catch(() => {}); // silently ignore if the table isn't set up yet
+  }, [activeTab, reportTimeframe]);
+
   // Search & Filter states
   const [searchQuery, setSearchQuery] = useState("");
   const [orderStatusFilter, setOrderStatusFilter] = useState<string>("all");
@@ -168,11 +179,8 @@ export default function AdminPage() {
         id: "col-1",
         name: "Black",
         hex: "#111111",
-        swatchImage: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=300&auto=format&fit=crop",
-        images: [
-          "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=1200&auto=format&fit=crop",
-          "https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=1200&auto=format&fit=crop",
-        ],
+        swatchImage: "",
+        images: [],
       },
     ],
     descriptionSection: {
@@ -741,80 +749,73 @@ export default function AdminPage() {
     return true;
   });
 
-  // Analytics & Reports Calculations
-  const timeframeMultiplier = reportTimeframe === "7d" ? 0.35 : reportTimeframe === "30d" ? 1 : 2.6;
+  // Analytics & Reports Calculations — all values derived from real orders only
+  // Filter orders by timeframe
+  const now = new Date();
+  const timeframeDays = reportTimeframe === "7d" ? 7 : reportTimeframe === "30d" ? 30 : Infinity;
+  const filteredReportOrders = orders.filter((o) => {
+    if (timeframeDays === Infinity) return true;
+    const created = o.date ? new Date(o.date) : null;
+    if (!created || isNaN(created.getTime())) return true;
+    const diffDays = (now.getTime() - created.getTime()) / (1000 * 60 * 60 * 24);
+    return diffDays <= timeframeDays;
+  });
 
-  const productAnalytics = products.map((prod, index) => {
-    const baseViews = Math.round((2850 - index * 240 + (prod.reviews?.length || 0) * 160) * timeframeMultiplier);
-    const views = Math.max(baseViews, 320);
-    const uniqueVisitors = Math.round(views * 0.76);
-    const ctr = Number((19.2 + (index % 4) * 2.5).toFixed(1));
-    const clicks = Math.round((views * ctr) / 100);
-    const quickAddClicks = Math.round(clicks * 0.35);
-    const addToBagClicks = Math.round(clicks * 0.48);
-
-    const unitsFromOrders = orders
+  const productAnalytics = products.map((prod) => {
+    // Real units sold from actual non-cancelled orders in the selected timeframe
+    const unitsFromOrders = filteredReportOrders
       .filter((o) => o.status !== "Cancelled")
       .reduce((sum, ord) => {
         const item = ord.items.find((i) => i.productId === prod.id);
         return sum + (item ? item.quantity : 0);
       }, 0);
-    const unitsSold = Math.round((unitsFromOrders + 24 - index * 2) * (reportTimeframe === "7d" ? 0.4 : 1));
-    const finalUnitsSold = Math.max(unitsSold, 3);
-    const grossRevenueAUD = finalUnitsSold * prod.priceAUD;
-    const remainingStock = prod.inStock ? 52 - (index * 4) % 20 : 0;
-    const sellThroughRate = Number(((finalUnitsSold / (finalUnitsSold + remainingStock || 1)) * 100).toFixed(1));
-    const conversionRate = Number(((finalUnitsSold / clicks) * 100).toFixed(1));
+
+    // Real revenue = actual units × product price
+    const grossRevenueAUD = unitsFromOrders * prod.priceAUD;
+
+    // Real order count for this product
+    const orderCount = filteredReportOrders
+      .filter((o) => o.status !== "Cancelled" && o.items.some((i) => i.productId === prod.id))
+      .length;
 
     return {
       product: prod,
-      views,
-      uniqueVisitors,
-      clicks,
-      ctr,
-      quickAddClicks,
-      addToBagClicks,
-      unitsSold: finalUnitsSold,
+      unitsSold: unitsFromOrders,
       grossRevenueAUD,
-      conversionRate,
-      remainingStock,
-      sellThroughRate,
-      trend: index % 2 === 0 ? +16.4 : +9.2,
+      orderCount,
     };
   });
 
-  // 1. Most Viewed Items
-  const mostViewedItems = [...productAnalytics].sort((a, b) => b.views - a.views);
-
-  // 2. Most Clicked Items
-  const mostClickedItems = [...productAnalytics].sort((a, b) => b.clicks - a.clicks);
-
-  // 3. Top Selling Items
+  // 1. Top Selling Items (by real units sold)
   const topSellingItems = [...productAnalytics].sort((a, b) => b.unitsSold - a.unitsSold);
 
-  // Summary Totals
-  const totalReportViews = productAnalytics.reduce((acc, p) => acc + p.views, 0);
-  const totalReportClicks = productAnalytics.reduce((acc, p) => acc + p.clicks, 0);
-  const totalReportUnitsSold = productAnalytics.reduce((acc, p) => acc + p.unitsSold, 0);
-  const totalReportRevenueAUD = productAnalytics.reduce((acc, p) => acc + p.grossRevenueAUD, 0);
-  const avgStoreCTR = Number(((totalReportClicks / (totalReportViews || 1)) * 100).toFixed(1));
+  // Most Viewed / Most Clicked — no real tracking data; fall back to top sellers
+  const mostViewedItems = topSellingItems;
+  const mostClickedItems = topSellingItems;
+
+  // Real Summary Totals
+  const totalReportUnitsSold = filteredReportOrders
+    .filter((o) => o.status !== "Cancelled")
+    .reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0);
+
+  const totalReportRevenueAUD = filteredReportOrders
+    .filter((o) => o.status !== "Cancelled")
+    .reduce((sum, o) => sum + (Number(o.totalAUD) || 0), 0);
+
+  const totalReportOrders = filteredReportOrders.filter((o) => o.status !== "Cancelled").length;
 
   // CSV Export
   const handleExportCSV = () => {
-    const headers = ["Rank", "Product Name", "SKU", "Category", "Price (AUD)", "Views", "Unique Visitors", "Clicks", "CTR (%)", "Units Sold", "Gross Revenue (AUD)", "Sell-Through (%)"];
+    const headers = ["Rank", "Product Name", "SKU", "Category", "Price (AUD)", "Units Sold", "Gross Revenue (AUD)", "Orders"];
     const rows = topSellingItems.map((item, idx) => [
       idx + 1,
       `"${item.product.name.replace(/"/g, '""')}"`,
       item.product.id,
       item.product.category,
       item.product.priceAUD,
-      item.views,
-      item.uniqueVisitors,
-      item.clicks,
-      `${item.ctr}%`,
       item.unitsSold,
       item.grossRevenueAUD,
-      `${item.sellThroughRate}%`,
+      item.orderCount,
     ]);
     const csvContent = "data:text/csv;charset=utf-8," + [headers.join(","), ...rows.map(r => r.join(","))].join("\n");
     const encodedUri = encodeURI(csvContent);
@@ -2041,33 +2042,33 @@ export default function AdminPage() {
               {/* 4 Summary Stat Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                {/* Total Views Card */}
+                {/* Total Orders Card */}
                 <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-neutral-400">
-                    <span className="text-[11px] uppercase tracking-wider font-mono">Total Product Views</span>
-                    <Eye size={16} className="text-blue-400" />
+                    <span className="text-[11px] uppercase tracking-wider font-mono">Total Orders</span>
+                    <ShoppingBag size={16} className="text-blue-400" />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
-                    {totalReportViews.toLocaleString()}
+                    {totalReportOrders}
                   </div>
-                  <div className="flex items-center space-x-1.5 text-[11px] text-emerald-400 font-mono">
-                    <TrendingUp size={12} />
-                    <span>+18.4% vs prev period</span>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    {filteredReportOrders.filter((o) => o.status === "Cancelled").length} cancelled in period
                   </div>
                 </div>
 
-                {/* Total Clicks Card */}
+                {/* Avg Order Value Card */}
                 <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-neutral-400">
-                    <span className="text-[11px] uppercase tracking-wider font-mono">Product Clicks & CTR</span>
-                    <MousePointerClick size={16} className="text-purple-400" />
+                    <span className="text-[11px] uppercase tracking-wider font-mono">Avg Order Value</span>
+                    <TrendingUp size={16} className="text-purple-400" />
                   </div>
                   <div className="text-2xl font-mono font-bold text-white">
-                    {totalReportClicks.toLocaleString()}
+                    {totalReportOrders > 0
+                      ? `AUD $${(totalReportRevenueAUD / totalReportOrders).toFixed(2)}`
+                      : "—"}
                   </div>
-                  <div className="flex items-center space-x-1.5 text-[11px] text-neutral-300 font-mono">
-                    <span className="text-emerald-400 font-semibold">{avgStoreCTR}%</span>
-                    <span>Avg Click-Through Rate</span>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    Per completed order
                   </div>
                 </div>
 
@@ -2080,9 +2081,8 @@ export default function AdminPage() {
                   <div className="text-2xl font-mono font-bold text-white">
                     {totalReportUnitsSold} <span className="text-xs text-neutral-400 font-normal">units</span>
                   </div>
-                  <div className="flex items-center space-x-1.5 text-[11px] text-emerald-400 font-mono">
-                    <TrendingUp size={12} />
-                    <span>+24.1% sales velocity</span>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    Across {products.length} product{products.length !== 1 ? "s" : ""}
                   </div>
                 </div>
 
@@ -2103,27 +2103,27 @@ export default function AdminPage() {
                     </div>
                   </div>
                   <div className="text-[11px] text-neutral-400 font-mono pt-1 border-t border-neutral-800">
-                    Across {orders.length} orders
+                    {ausOrders.length} AU • {slOrders.length} LK orders
                   </div>
                 </div>
 
               </div>
 
-              {/* REPORT SECTION 1: MOST VIEWED ITEMS */}
+              {/* REPORT SECTION 1: TOP SELLING ITEMS */}
               <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden space-y-4 p-5">
                 <div className="flex justify-between items-center pb-3 border-b border-neutral-800">
                   <div className="flex items-center space-x-2">
-                    <Eye size={18} className="text-blue-400" />
+                    <Flame size={18} className="text-amber-400" />
                     <div>
                       <h4 className="text-sm font-serif font-bold uppercase tracking-wider text-white">
-                        Most Viewed Items (Traffic Leaders)
+                        Top Products by Sales
                       </h4>
                       <p className="text-[11px] text-neutral-400">
-                        Ranked by total page impressions and unique guest visitors
+                        Ranked by real units sold from completed orders
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-neutral-500 uppercase">Top {mostViewedItems.length} Products</span>
+                  <span className="text-xs font-mono text-neutral-500 uppercase">Top {topSellingItems.length} Products</span>
                 </div>
 
                 <div className="overflow-x-auto">
@@ -2133,32 +2133,35 @@ export default function AdminPage() {
                         <th className="py-3 px-4 font-semibold w-12 text-center">Rank</th>
                         <th className="py-3 px-4 font-semibold">Product</th>
                         <th className="py-3 px-4 font-semibold">Category</th>
-                        <th className="py-3 px-4 font-semibold text-right">Total Views</th>
-                        <th className="py-3 px-4 font-semibold text-right">Unique Visitors</th>
-                        <th className="py-3 px-4 font-semibold text-right">CTR</th>
-                        <th className="py-3 px-4 font-semibold text-center">Weekly Trend</th>
+                        <th className="py-3 px-4 font-semibold text-right">Units Sold</th>
+                        <th className="py-3 px-4 font-semibold text-right">Gross Revenue</th>
+                        <th className="py-3 px-4 font-semibold text-right">Orders</th>
                         <th className="py-3 px-4 text-right font-semibold">Live Preview</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-neutral-800/80">
-                      {mostViewedItems.map((item, idx) => {
+                      {topSellingItems.map((item, idx) => {
                         const img = item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage;
                         return (
                           <tr key={item.product.id} className="hover:bg-neutral-800/40 transition-colors">
                             <td className="py-3.5 px-4 text-center font-mono font-bold text-neutral-400">
                               <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${
-                                idx === 0 ? "bg-blue-500/20 text-blue-300 font-bold" : idx === 1 ? "bg-neutral-700 text-white" : idx === 2 ? "bg-neutral-800 text-neutral-300" : "text-neutral-500"
+                                idx === 0 ? "bg-amber-500/20 text-amber-300 font-bold" : idx === 1 ? "bg-neutral-700 text-white" : idx === 2 ? "bg-neutral-800 text-neutral-300" : "text-neutral-500"
                               }`}>
                                 #{idx + 1}
                               </span>
                             </td>
                             <td className="py-3.5 px-4">
                               <div className="flex items-center space-x-3">
-                                <img
-                                  src={img}
-                                  alt={item.product.name}
-                                  className="w-10 h-12 object-cover rounded bg-neutral-950 shrink-0 border border-neutral-700"
-                                />
+                                {img ? (
+                                  <img
+                                    src={img}
+                                    alt={item.product.name}
+                                    className="w-10 h-12 object-cover rounded bg-neutral-950 shrink-0 border border-neutral-700"
+                                  />
+                                ) : (
+                                  <div className="w-10 h-12 bg-neutral-800 rounded shrink-0 border border-neutral-700 flex items-center justify-center text-neutral-600 text-[9px]">IMG</div>
+                                )}
                                 <div>
                                   <div className="font-serif text-white font-medium text-[13px]">{item.product.name}</div>
                                   <div className="font-mono text-[10px] text-neutral-500">ID: {item.product.id} • {formatPrice(item.product.priceAUD)}</div>
@@ -2169,19 +2172,13 @@ export default function AdminPage() {
                               <span className="bg-neutral-800 px-2 py-0.5 rounded text-[11px]">{item.product.category}</span>
                             </td>
                             <td className="py-3.5 px-4 text-right font-mono font-bold text-white text-sm">
-                              {item.views.toLocaleString()}
+                              {item.unitsSold} <span className="text-[10px] text-neutral-400 font-normal">units</span>
+                            </td>
+                            <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 text-sm">
+                              {formatPrice(item.grossRevenueAUD)}
                             </td>
                             <td className="py-3.5 px-4 text-right font-mono text-neutral-300">
-                              {item.uniqueVisitors.toLocaleString()}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono text-emerald-400 font-semibold">
-                              {item.ctr}%
-                            </td>
-                            <td className="py-3.5 px-4 text-center font-mono text-[11px]">
-                              <span className="inline-flex items-center space-x-1 text-emerald-400 bg-emerald-950/40 px-2 py-0.5 rounded">
-                                <TrendingUp size={10} />
-                                <span>+{item.trend}%</span>
-                              </span>
+                              {item.orderCount}
                             </td>
                             <td className="py-3.5 px-4 text-right">
                               <Link
@@ -2201,190 +2198,103 @@ export default function AdminPage() {
                 </div>
               </div>
 
-              {/* REPORT SECTION 2: MOST CLICKED ITEMS (PURCHASE INTENT) */}
+              {/* REPORT SECTION 2: PRODUCT ENGAGEMENT (real views, clicks, add-to-bag from DB) */}
               <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden space-y-4 p-5">
                 <div className="flex justify-between items-center pb-3 border-b border-neutral-800">
                   <div className="flex items-center space-x-2">
                     <MousePointerClick size={18} className="text-purple-400" />
                     <div>
                       <h4 className="text-sm font-serif font-bold uppercase tracking-wider text-white">
-                        Most Clicked Items (Purchase Intent)
+                        Product Engagement
                       </h4>
                       <p className="text-[11px] text-neutral-400">
-                        Ranked by customer engagement, quick add interactions, and add-to-bag clicks
+                        Real page views, product clicks, and add-to-bag events recorded from customer sessions
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-neutral-500 uppercase">High-Intent Actions</span>
+                  <span className="text-xs font-mono text-neutral-500 uppercase">Live Tracking Data</span>
                 </div>
 
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-neutral-950 text-neutral-400 uppercase tracking-wider text-[11px] border-b border-neutral-800">
-                      <tr>
-                        <th className="py-3 px-4 font-semibold w-12 text-center">Rank</th>
-                        <th className="py-3 px-4 font-semibold">Product</th>
-                        <th className="py-3 px-4 font-semibold text-right">Total Clicks</th>
-                        <th className="py-3 px-4 font-semibold text-right">Click-Through (CTR)</th>
-                        <th className="py-3 px-4 font-semibold text-right">Add to Bag Clicks</th>
-                        <th className="py-3 px-4 font-semibold text-right">Quick Add Clicks</th>
-                        <th className="py-3 px-4 font-semibold text-center">Intent Level</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-800/80">
-                      {mostClickedItems.map((item, idx) => {
-                        const img = item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage;
-                        return (
-                          <tr key={item.product.id} className="hover:bg-neutral-800/40 transition-colors">
-                            <td className="py-3.5 px-4 text-center font-mono font-bold text-neutral-400">
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${
-                                idx === 0 ? "bg-purple-500/20 text-purple-300 font-bold" : idx === 1 ? "bg-neutral-700 text-white" : idx === 2 ? "bg-neutral-800 text-neutral-300" : "text-neutral-500"
-                              }`}>
-                                #{idx + 1}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center space-x-3">
-                                <img
-                                  src={img}
-                                  alt={item.product.name}
-                                  className="w-10 h-12 object-cover rounded bg-neutral-950 shrink-0 border border-neutral-700"
-                                />
-                                <div>
-                                  <div className="font-serif text-white font-medium text-[13px]">{item.product.name}</div>
-                                  <div className="font-mono text-[10px] text-neutral-500">{item.product.category} • {formatPrice(item.product.priceAUD)}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-white text-sm">
-                              {item.clicks.toLocaleString()}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-semibold text-purple-400">
-                              {item.ctr}%
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono text-neutral-300">
-                              {item.addToBagClicks.toLocaleString()}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono text-neutral-300">
-                              {item.quickAddClicks.toLocaleString()}
-                            </td>
-                            <td className="py-3.5 px-4 text-center font-mono text-[10px]">
-                              <span className={`px-2 py-0.5 rounded uppercase font-bold tracking-wider ${
-                                idx < 2
-                                  ? "bg-purple-950 text-purple-300 border border-purple-800"
-                                  : "bg-neutral-800 text-neutral-300"
-                              }`}>
-                                {idx === 0 ? "Highest Demand" : idx === 1 ? "High Intent" : "Steady Demand"}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-
-              {/* REPORT SECTION 3: TOP SELLING ITEMS (REVENUE & VOLUME) */}
-              <div className="bg-neutral-900 border border-neutral-800 rounded-lg overflow-hidden space-y-4 p-5">
-                <div className="flex justify-between items-center pb-3 border-b border-neutral-800">
-                  <div className="flex items-center space-x-2">
-                    <Flame size={18} className="text-amber-400" />
-                    <div>
-                      <h4 className="text-sm font-serif font-bold uppercase tracking-wider text-white">
-                        Top Selling Items (Revenue & Volume)
-                      </h4>
-                      <p className="text-[11px] text-neutral-400">
-                        Ranked by units sold, total gross revenue, and sell-through rate
-                      </p>
-                    </div>
+                {Object.keys(analyticsMap).length === 0 ? (
+                  <div className="py-10 text-center text-neutral-500 text-sm font-mono">
+                    <MousePointerClick size={24} className="mx-auto mb-3 opacity-40" />
+                    <p>No engagement data yet.</p>
+                    <p className="text-[11px] mt-1 text-neutral-600">
+                      Data will appear here once customers start visiting product pages.
+                    </p>
                   </div>
-                  <span className="text-xs font-mono text-neutral-500 uppercase">Sales Leaders</span>
-                </div>
-
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead className="bg-neutral-950 text-neutral-400 uppercase tracking-wider text-[11px] border-b border-neutral-800">
-                      <tr>
-                        <th className="py-3 px-4 font-semibold w-12 text-center">Rank</th>
-                        <th className="py-3 px-4 font-semibold">Product</th>
-                        <th className="py-3 px-4 font-semibold text-right">Units Sold</th>
-                        <th className="py-3 px-4 font-semibold text-right">Gross Revenue</th>
-                        <th className="py-3 px-4 font-semibold text-right">Stock Remaining</th>
-                        <th className="py-3 px-4 font-semibold text-right">Sell-Through</th>
-                        <th className="py-3 px-4 font-semibold text-center">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y divide-neutral-800/80">
-                      {topSellingItems.map((item, idx) => {
-                        const img = item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage;
-                        return (
-                          <tr key={item.product.id} className="hover:bg-neutral-800/40 transition-colors">
-                            <td className="py-3.5 px-4 text-center font-mono font-bold text-neutral-400">
-                              <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${
-                                idx === 0 ? "bg-amber-500/20 text-amber-300 font-bold" : idx === 1 ? "bg-neutral-700 text-white" : idx === 2 ? "bg-neutral-800 text-neutral-300" : "text-neutral-500"
-                              }`}>
-                                #{idx + 1}
-                              </span>
-                            </td>
-                            <td className="py-3.5 px-4">
-                              <div className="flex items-center space-x-3">
-                                <img
-                                  src={img}
-                                  alt={item.product.name}
-                                  className="w-10 h-12 object-cover rounded bg-neutral-950 shrink-0 border border-neutral-700"
-                                />
-                                <div>
-                                  <div className="font-serif text-white font-medium text-[13px]">{item.product.name}</div>
-                                  <div className="font-mono text-[10px] text-neutral-500">{item.product.category} • Unit: {formatPrice(item.product.priceAUD)}</div>
-                                </div>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-white text-sm">
-                              {item.unitsSold} <span className="text-[10px] text-neutral-400 font-normal">units</span>
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-400 text-sm">
-                              {formatPrice(item.grossRevenueAUD)}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono text-neutral-300">
-                              {item.remainingStock > 0 ? (
-                                <span>{item.remainingStock} in stock</span>
-                              ) : (
-                                <span className="text-amber-400">Pre-Order Only</span>
-                              )}
-                            </td>
-                            <td className="py-3.5 px-4 text-right font-mono font-semibold text-neutral-200">
-                              <div className="flex items-center justify-end space-x-2">
-                                <div className="w-16 bg-neutral-800 rounded-full h-1.5 overflow-hidden">
-                                  <div
-                                    className="bg-amber-400 h-full rounded-full"
-                                    style={{ width: `${Math.min(item.sellThroughRate, 100)}%` }}
-                                  />
-                                </div>
-                                <span>{item.sellThroughRate}%</span>
-                              </div>
-                            </td>
-                            <td className="py-3.5 px-4 text-center font-mono text-[10px]">
-                              {idx === 0 ? (
-                                <span className="bg-amber-950 text-amber-300 border border-amber-800 px-2 py-0.5 rounded font-bold uppercase">
-                                  ★ Best Seller
-                                </span>
-                              ) : item.remainingStock < 10 ? (
-                                <span className="bg-red-950 text-red-300 border border-red-800 px-2 py-0.5 rounded font-bold uppercase">
-                                  Low Stock
-                                </span>
-                              ) : (
-                                <span className="bg-emerald-950 text-emerald-300 border border-emerald-800 px-2 py-0.5 rounded font-bold uppercase">
-                                  Active
-                                </span>
-                              )}
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead className="bg-neutral-950 text-neutral-400 uppercase tracking-wider text-[11px] border-b border-neutral-800">
+                        <tr>
+                          <th className="py-3 px-4 font-semibold w-12 text-center">Rank</th>
+                          <th className="py-3 px-4 font-semibold">Product</th>
+                          <th className="py-3 px-4 font-semibold text-right">Page Views</th>
+                          <th className="py-3 px-4 font-semibold text-right">Clicks</th>
+                          <th className="py-3 px-4 font-semibold text-right">Add to Bag</th>
+                          <th className="py-3 px-4 font-semibold text-center">Conversion</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-neutral-800/80">
+                        {[...products]
+                          .map(prod => ({
+                            product: prod,
+                            stats: analyticsMap[prod.id] || { views: 0, clicks: 0, addToBag: 0 },
+                          }))
+                          .sort((a, b) => b.stats.views - a.stats.views)
+                          .map((item, idx) => {
+                            const img = item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage;
+                            const convPct = item.stats.views > 0
+                              ? ((item.stats.addToBag / item.stats.views) * 100).toFixed(1)
+                              : "0.0";
+                            return (
+                              <tr key={item.product.id} className="hover:bg-neutral-800/40 transition-colors">
+                                <td className="py-3.5 px-4 text-center font-mono font-bold text-neutral-400">
+                                  <span className={`inline-flex items-center justify-center w-6 h-6 rounded-full text-xs ${
+                                    idx === 0 ? "bg-purple-500/20 text-purple-300 font-bold" : idx === 1 ? "bg-neutral-700 text-white" : idx === 2 ? "bg-neutral-800 text-neutral-300" : "text-neutral-500"
+                                  }`}>
+                                    #{idx + 1}
+                                  </span>
+                                </td>
+                                <td className="py-3.5 px-4">
+                                  <div className="flex items-center space-x-3">
+                                    {img ? (
+                                      <img src={img} alt={item.product.name} className="w-10 h-12 object-cover rounded bg-neutral-950 shrink-0 border border-neutral-700" />
+                                    ) : (
+                                      <div className="w-10 h-12 bg-neutral-800 rounded shrink-0 border border-neutral-700 flex items-center justify-center text-neutral-600 text-[9px]">IMG</div>
+                                    )}
+                                    <div>
+                                      <div className="font-serif text-white font-medium text-[13px]">{item.product.name}</div>
+                                      <div className="font-mono text-[10px] text-neutral-500">{item.product.category} • {formatPrice(item.product.priceAUD)}</div>
+                                    </div>
+                                  </div>
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono font-bold text-white text-sm">
+                                  {item.stats.views.toLocaleString()}
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono font-semibold text-purple-400">
+                                  {item.stats.clicks.toLocaleString()}
+                                </td>
+                                <td className="py-3.5 px-4 text-right font-mono text-emerald-400 font-semibold">
+                                  {item.stats.addToBag.toLocaleString()}
+                                </td>
+                                <td className="py-3.5 px-4 text-center font-mono text-[11px]">
+                                  <span className={`px-2 py-0.5 rounded font-bold ${
+                                    Number(convPct) > 5 ? "bg-emerald-950 text-emerald-300 border border-emerald-800"
+                                    : Number(convPct) > 0 ? "bg-purple-950 text-purple-300 border border-purple-800"
+                                    : "bg-neutral-800 text-neutral-500"
+                                  }`}>
+                                    {convPct}%
+                                  </span>
+                                </td>
+                              </tr>
+                            );
+                          })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
               </div>
 
               {/* REPORT SECTION 4: CATEGORY PERFORMANCE BREAKDOWN */}
@@ -2401,10 +2311,11 @@ export default function AdminPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                   {categories.map((cat, i) => {
                     const catItems = productAnalytics.filter((p) => p.product.category === cat.title);
-                    const catViews = catItems.reduce((acc, p) => acc + p.views, 0);
                     const catUnits = catItems.reduce((acc, p) => acc + p.unitsSold, 0);
                     const catRevenue = catItems.reduce((acc, p) => acc + p.grossRevenueAUD, 0);
-                    const viewShare = Number(((catViews / (totalReportViews || 1)) * 100).toFixed(1));
+                    const revenueShare = totalReportRevenueAUD > 0
+                      ? Number(((catRevenue / totalReportRevenueAUD) * 100).toFixed(1))
+                      : 0;
 
                     return (
                       <div key={cat.id} className="bg-neutral-950 p-4 rounded border border-neutral-800 space-y-3">
@@ -2422,13 +2333,13 @@ export default function AdminPage() {
 
                         <div className="space-y-1.5 text-xs font-mono">
                           <div className="flex justify-between text-neutral-400">
-                            <span>Traffic Share:</span>
-                            <span className="text-white font-bold">{viewShare}%</span>
+                            <span>Revenue Share:</span>
+                            <span className="text-white font-bold">{revenueShare}%</span>
                           </div>
                           <div className="w-full bg-neutral-800 h-1.5 rounded-full overflow-hidden">
                             <div
                               className="bg-white h-full rounded-full"
-                              style={{ width: `${viewShare}%` }}
+                              style={{ width: `${revenueShare}%` }}
                             />
                           </div>
                         </div>

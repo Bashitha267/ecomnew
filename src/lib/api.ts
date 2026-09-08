@@ -230,6 +230,38 @@ export const dashboardApi = {
   stats: () => api.get('/api/dashboard/stats'),
 };
 
+// ANALYTICS
+export const analyticsApi = {
+  /**
+   * Fire-and-forget: record a view, click, or add_to_bag event.
+   * Silently swallows errors so it never breaks the user flow.
+   */
+  track: (productId: string, event: 'view' | 'click' | 'add_to_bag', country?: string) => {
+    // Use a simple session fingerprint stored in sessionStorage
+    let sessionId: string | null = null;
+    if (typeof window !== 'undefined') {
+      sessionId = sessionStorage.getItem('cv_session_id');
+      if (!sessionId) {
+        sessionId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+        sessionStorage.setItem('cv_session_id', sessionId);
+      }
+    }
+    return api
+      .post('/api/analytics/track', { productId, event, sessionId, country })
+      .catch(() => {}); // swallow — never block UI
+  },
+
+  /**
+   * Admin: fetch per-product view/click/add_to_bag counts.
+   * @param days  0 = all time, 7 = last 7 days, 30 = last 30 days
+   */
+  summary: (days: number = 0) =>
+    api.get<{
+      success: boolean;
+      data: Record<string, { views: number; clicks: number; addToBag: number }>;
+    }>('/api/analytics/summary', { params: { days } }),
+};
+
 // HOMEPAGE VIDEOS
 export interface HomepageVideoItem {
   id: string;
