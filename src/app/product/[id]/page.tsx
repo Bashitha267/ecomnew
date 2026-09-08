@@ -202,7 +202,7 @@ export default function ProductDetailPage({ params }: PageProps) {
 
               <div className="flex items-baseline space-x-3 pt-1">
                 <span className="text-lg md:text-xl font-mono font-medium text-neutral-900">
-                  {formatPrice(product.priceAUD)}
+                  {formatPrice(product.priceAUD, product.priceLKR)}
                 </span>
                 {product.preOrder && (
                   <span className="text-xs font-mono uppercase tracking-widest text-emerald-800 bg-emerald-50 px-2 py-0.5 rounded">
@@ -606,7 +606,7 @@ export default function ProductDetailPage({ params }: PageProps) {
                     {rel.name}
                   </h4>
                   <span className="text-xs font-mono font-medium text-neutral-700 mt-1">
-                    {formatPrice(rel.priceAUD)}
+                    {formatPrice(rel.priceAUD, rel.priceLKR)}
                   </span>
                 </Link>
               );

@@ -168,6 +168,7 @@ export default function AdminPage() {
     id: "",
     name: "",
     priceAUD: 220,
+    priceLKR: 46000,
     category: "Shirts",
     badge: "New Arrival",
     inStock: true,
@@ -239,6 +240,7 @@ export default function AdminPage() {
       id: newId,
       name: "",
       priceAUD: 220,
+      priceLKR: 46000,
       category: categories[1]?.title || "Shirts",
       badge: "New Arrival",
       inStock: true,
@@ -250,11 +252,8 @@ export default function AdminPage() {
           id: "col-" + Date.now(),
           name: "Black",
           hex: "#111111",
-          swatchImage: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=300&auto=format&fit=crop",
-          images: [
-            "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=1200&auto=format&fit=crop",
-            "https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?q=80&w=1200&auto=format&fit=crop",
-          ],
+          swatchImage: "",
+          images: [],
         },
       ],
       descriptionSection: {
@@ -281,9 +280,18 @@ export default function AdminPage() {
     const targetCountries = prod.targetCountries && prod.targetCountries.length > 0
       ? prod.targetCountries
       : ["Australia", "Sri Lanka"];
-    setProductForm({ ...JSON.parse(JSON.stringify(prod)), targetCountries });
+    const priceLKR = prod.priceLKR !== undefined && prod.priceLKR !== null
+      ? prod.priceLKR
+      : (prod.priceAUD ? Math.round(prod.priceAUD * 210.5) : undefined);
+    setProductForm({
+      ...JSON.parse(JSON.stringify(prod)),
+      targetCountries,
+      priceAUD: prod.priceAUD,
+      priceLKR,
+    });
     setIsProductModalOpen(true);
   };
+
   // Save Product
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -291,8 +299,20 @@ export default function AdminPage() {
       showToast("Please provide a Product Name", "error");
       return;
     }
-    if (productForm.priceAUD === undefined || Number(productForm.priceAUD) <= 0) {
-      showToast("Please provide a valid Price", "error");
+
+    const targetCountries = productForm.targetCountries && productForm.targetCountries.length > 0
+      ? productForm.targetCountries
+      : ["Australia", "Sri Lanka"];
+    const isAU = targetCountries.includes("Australia");
+    const isSL = targetCountries.includes("Sri Lanka");
+
+    // Dynamic price validation depending on selected countries
+    if (isAU && (productForm.priceAUD === undefined || Number(productForm.priceAUD) <= 0)) {
+      showToast("Please provide a valid Australia Price (AUD $)", "error");
+      return;
+    }
+    if (isSL && (productForm.priceLKR === undefined || Number(productForm.priceLKR) <= 0)) {
+      showToast("Please provide a valid Sri Lanka Price (LKR Rs)", "error");
       return;
     }
 
@@ -302,24 +322,35 @@ export default function AdminPage() {
         ? editingProduct.id
         : (productForm.id?.trim() || ("prod-" + Date.now().toString().slice(-6) + Math.random().toString(36).slice(2, 6)));
 
+      const priceAUDNum = Number(productForm.priceAUD) || 0;
+      const priceLKRNum = Number(productForm.priceLKR) || 0;
+
+      // Ensure priceAUD is filled for DB NOT NULL schema requirement
+      const finalPriceAUD = priceAUDNum > 0
+        ? priceAUDNum
+        : (priceLKRNum > 0 ? Math.round((priceLKRNum / 210.5) * 100) / 100 : 0);
+
+      const finalPriceLKR = isSL
+        ? (priceLKRNum > 0 ? priceLKRNum : Math.round(finalPriceAUD * 210.5))
+        : (priceLKRNum > 0 ? priceLKRNum : undefined);
+
       const finalProduct: FullProduct = {
         id: finalId,
         name: productForm.name.trim(),
-        priceAUD: Number(productForm.priceAUD) || 0,
+        priceAUD: finalPriceAUD,
+        priceLKR: finalPriceLKR,
         category: productForm.category || "Shirts",
         badge: productForm.badge || undefined,
         inStock: productForm.inStock ?? true,
         preOrder: productForm.preOrder ?? false,
-        targetCountries: productForm.targetCountries && productForm.targetCountries.length > 0
-          ? productForm.targetCountries
-          : ["Australia", "Sri Lanka"],
+        targetCountries,
         sizes: productForm.sizes && productForm.sizes.length > 0 ? productForm.sizes : ["M", "L"],
         colors: productForm.colors && productForm.colors.length > 0 ? productForm.colors : [
           {
             id: "col-1",
             name: "Standard",
-            swatchImage: "https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=300",
-            images: ["https://images.unsplash.com/photo-1596755094514-f87e34085b2c?q=80&w=1000"],
+            swatchImage: "",
+            images: [],
           },
         ],
         descriptionSection: {
@@ -371,10 +402,8 @@ export default function AdminPage() {
       id: "col-" + Date.now(),
       name: "New Color",
       hex: "#333333",
-      swatchImage: "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=300&auto=format&fit=crop",
-      images: [
-        "https://images.unsplash.com/photo-1521572267360-ee0c2909d518?q=80&w=1200&auto=format&fit=crop",
-      ],
+      swatchImage: "",
+      images: [],
     };
     setProductForm((prev) => ({
       ...prev,
@@ -1652,7 +1681,7 @@ export default function AdminPage() {
                       <tr>
                         <th className="py-3.5 px-4 font-semibold">Product & ID</th>
                         <th className="py-3.5 px-4 font-semibold">Category</th>
-                        <th className="py-3.5 px-4 font-semibold">Price (AUD)</th>
+                        <th className="py-3.5 px-4 font-semibold">Price</th>
                         <th className="py-3.5 px-4 font-semibold">Display Regions</th>
                         <th className="py-3.5 px-4 font-semibold">Colors & Images</th>
                         <th className="py-3.5 px-4 font-semibold">Sizes</th>
@@ -1707,9 +1736,21 @@ export default function AdminPage() {
                                 </div>
                               </div>
                             </td>
-                            <td className="py-4 px-4 text-neutral-300">{prod.category}</td>
-                            <td className="py-4 px-4 font-mono font-medium text-white">
-                              {formatPrice(prod.priceAUD)}
+                            <td className="py-4 px-4 font-mono font-medium">
+                              {(!prod.targetCountries || prod.targetCountries.length === 2 || prod.targetCountries.length === 0) ? (
+                                <div className="space-y-0.5">
+                                  <div className="text-white text-xs">🇦🇺 AUD ${(Number(prod.priceAUD) || 0).toFixed(2)}</div>
+                                  <div className="text-amber-400 text-[11px]">
+                                    🇱🇰 LKR {((Number(prod.priceLKR) || Math.round((Number(prod.priceAUD) || 0) * 210.5))).toLocaleString()}
+                                  </div>
+                                </div>
+                              ) : prod.targetCountries.includes("Sri Lanka") ? (
+                                <div className="text-amber-400 text-xs">
+                                  🇱🇰 LKR {((Number(prod.priceLKR) || Math.round((Number(prod.priceAUD) || 0) * 210.5))).toLocaleString()}
+                                </div>
+                              ) : (
+                                <div className="text-white text-xs">🇦🇺 AUD ${(Number(prod.priceAUD) || 0).toFixed(2)}</div>
+                              )}
                             </td>
                             <td className="py-4 px-4">
                               <div className="flex flex-wrap gap-1">
@@ -2435,51 +2476,107 @@ export default function AdminPage() {
             {/* Modal Form Body */}
             <form onSubmit={handleSaveProduct} className="p-6 overflow-y-auto space-y-6 flex-1 text-xs">
               
-              {/* Row 1: Basic Information */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div>
-                  <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
-                    Product ID / SKU *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={productForm.id || ""}
-                    onChange={(e) => setProductForm({ ...productForm, id: e.target.value })}
-                    placeholder="e.g. prod-101"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white font-mono focus:border-neutral-500 focus:outline-none"
-                  />
-                </div>
+              {/* Row 1: Basic Information & Dynamic Regional Pricing */}
+              {(() => {
+                const targetCountries = productForm.targetCountries && productForm.targetCountries.length > 0
+                  ? productForm.targetCountries
+                  : ["Australia", "Sri Lanka"];
+                const isAU = targetCountries.includes("Australia");
+                const isSL = targetCountries.includes("Sri Lanka");
+                const both = isAU && isSL;
 
-                <div>
-                  <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
-                    Product Name *
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={productForm.name || ""}
-                    onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
-                    placeholder="e.g. Relaxed Twill TENCEL™ Shirt"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:border-neutral-500 focus:outline-none"
-                  />
-                </div>
+                return (
+                  <div className={`grid grid-cols-1 ${both ? "sm:grid-cols-2 lg:grid-cols-4" : "md:grid-cols-3"} gap-4`}>
+                    <div>
+                      <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
+                        Product ID / SKU *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={productForm.id || ""}
+                        onChange={(e) => setProductForm({ ...productForm, id: e.target.value })}
+                        placeholder="e.g. prod-101"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white font-mono focus:border-neutral-500 focus:outline-none"
+                      />
+                    </div>
 
-                <div>
-                  <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
-                    Price (AUD $) *
-                  </label>
-                  <input
-                    type="number"
-                    required
-                    min="1"
-                    value={productForm.priceAUD || ""}
-                    onChange={(e) => setProductForm({ ...productForm, priceAUD: Number(e.target.value) })}
-                    placeholder="220"
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white font-mono focus:border-neutral-500 focus:outline-none"
-                  />
-                </div>
-              </div>
+                    <div>
+                      <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
+                        Product Name *
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        value={productForm.name || ""}
+                        onChange={(e) => setProductForm({ ...productForm, name: e.target.value })}
+                        placeholder="e.g. Relaxed Twill TENCEL™ Shirt"
+                        className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:border-neutral-500 focus:outline-none"
+                      />
+                    </div>
+
+                    {/* Australia Price field — rendered when Australia or both selected (or fallback if neither) */}
+                    {(isAU || (!isAU && !isSL)) && (
+                      <div>
+                        <label className="flex items-center justify-between uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
+                          <span className="flex items-center space-x-1">
+                            <span>🇦🇺 Price (AUD $) *</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-blue-400 font-normal">AUD</span>
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          step="any"
+                          value={productForm.priceAUD || ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setProductForm((prev) => ({
+                              ...prev,
+                              priceAUD: val,
+                              // If SL is also selected and user hasn't typed custom priceLKR, suggest conversion
+                              priceLKR: prev.priceLKR && prev.priceLKR > 0 ? prev.priceLKR : Math.round(val * 210.5),
+                            }));
+                          }}
+                          placeholder="220"
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white font-mono focus:border-blue-500 focus:outline-none"
+                        />
+                      </div>
+                    )}
+
+                    {/* Sri Lanka Price field — rendered when Sri Lanka or both selected */}
+                    {isSL && (
+                      <div>
+                        <label className="flex items-center justify-between uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
+                          <span className="flex items-center space-x-1">
+                            <span>🇱🇰 Price (LKR Rs) *</span>
+                          </span>
+                          <span className="text-[10px] font-mono text-amber-400 font-normal">LKR</span>
+                        </label>
+                        <input
+                          type="number"
+                          required
+                          min="1"
+                          step="any"
+                          value={productForm.priceLKR || ""}
+                          onChange={(e) => {
+                            const val = e.target.value === "" ? 0 : Number(e.target.value);
+                            setProductForm((prev) => ({
+                              ...prev,
+                              priceLKR: val,
+                              // If AU is not selected, automatically set priceAUD for database schema requirement
+                              priceAUD: (!isAU || !prev.priceAUD) ? Math.round((val / 210.5) * 100) / 100 : prev.priceAUD,
+                            }));
+                          }}
+                          placeholder="46000"
+                          className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white font-mono focus:border-amber-500 focus:outline-none"
+                        />
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
 
               {/* Row 2: Category, Badge & Availability */}
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4 pt-2 border-t border-neutral-800/80">
@@ -2643,6 +2740,18 @@ export default function AdminPage() {
                   >
                     Select Both (All Regions)
                   </button>
+                </div>
+
+                {/* Dynamic Pricing Indicator */}
+                <div className="mt-3 pt-2.5 border-t border-neutral-800/70 flex flex-wrap items-center justify-between text-[11px] font-mono text-neutral-400 gap-2">
+                  <span>Price Fields Required:</span>
+                  <span className="text-white font-semibold">
+                    {((productForm.targetCountries || ["Australia", "Sri Lanka"]).length === 2)
+                      ? "🇦🇺 AUD + 🇱🇰 LKR (2 Fields Required)"
+                      : (productForm.targetCountries || ["Australia", "Sri Lanka"])[0] === "Sri Lanka"
+                      ? "🇱🇰 LKR Price Required (1 Field)"
+                      : "🇦🇺 AUD Price Required (1 Field)"}
+                  </span>
                 </div>
               </div>
 

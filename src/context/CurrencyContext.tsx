@@ -8,7 +8,7 @@ export type Currency = "AUD" | "LKR";
 interface CurrencyContextType {
   currency: Currency;
   setCurrency: (c: Currency) => void;
-  formatPrice: (priceInAUD: number) => string;
+  formatPrice: (priceInAUD: number, priceInLKR?: number) => string;
   symbol: string;
 }
 
@@ -29,12 +29,15 @@ export const CurrencyProvider: React.FC<{ children: React.ReactNode }> = ({ chil
     }
   }, [selectedCountry]);
 
-  const formatPrice = (priceInAUD: number): string => {
+  const formatPrice = (priceInAUD: number, priceInLKR?: number): string => {
     if (currency === "LKR") {
-      const priceInLKR = Math.round(priceInAUD * AUD_TO_LKR_RATE);
-      return `LKR ${priceInLKR.toLocaleString()}`;
+      if (priceInLKR !== undefined && priceInLKR !== null && !isNaN(Number(priceInLKR)) && Number(priceInLKR) > 0) {
+        return `LKR ${Math.round(Number(priceInLKR)).toLocaleString()}`;
+      }
+      const priceInLKRCalc = Math.round((Number(priceInAUD) || 0) * AUD_TO_LKR_RATE);
+      return `LKR ${priceInLKRCalc.toLocaleString()}`;
     }
-    return `AUD $${priceInAUD.toFixed(2)}`;
+    return `AUD $${(Number(priceInAUD) || 0).toFixed(2)}`;
   };
 
   const symbol = currency === "AUD" ? "AUD $" : "LKR Rs";

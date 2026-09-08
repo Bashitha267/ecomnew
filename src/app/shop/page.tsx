@@ -602,7 +602,7 @@ function ShopCatalogContent() {
 
                       {/* Price in Selected Currency (Crisp Space Mono) */}
                       <span className="text-xs font-mono font-semibold tracking-tight text-neutral-900 mt-1.5">
-                        {formatPrice(p.priceAUD)}
+                        {formatPrice(p.priceAUD, p.priceLKR)}
                       </span>
 
                       {/* Star rating info */}

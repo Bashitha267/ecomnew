@@ -43,6 +43,7 @@ export interface FullProduct {
   id: string;
   name: string;
   priceAUD: number;
+  priceLKR?: number;
   category: string;
   badge?: string;
   inStock: boolean;
@@ -65,6 +66,7 @@ export interface Product {
   id: string;
   name: string;
   priceAUD: number;
+  priceLKR?: number;
   primaryImage: string;
   secondaryImage: string;
   rating: number;

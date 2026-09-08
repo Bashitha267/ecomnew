@@ -118,7 +118,7 @@ export const ComingSoonSection: React.FC = () => {
                   </h3>
                   
                   <p className="text-xs font-mono font-semibold tracking-tight text-neutral-900">
-                    {formatPrice(product.priceAUD)}
+                    {formatPrice(product.priceAUD, product.priceLKR)}
                   </p>
 
                   {/* Rating Stars */}
