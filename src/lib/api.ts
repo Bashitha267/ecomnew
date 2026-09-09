@@ -393,3 +393,21 @@ export const communitySpotlightApi = {
   reset: () =>
     api.post<{ success: boolean; message: string }>('/api/community-spotlight/reset'),
 };
+
+/**
+ * Normalizes image URLs from local public paths, backend uploads, or full URLs.
+ * Provides safe fallback if image is missing.
+ */
+export function getImageUrl(url?: string | null, fallback = '/images/cat_shop_all.jpg'): string {
+  if (!url || typeof url !== 'string' || !url.trim()) return fallback;
+  const trimmed = url.trim();
+  if (trimmed.startsWith('http://') || trimmed.startsWith('https://') || trimmed.startsWith('data:')) {
+    return trimmed;
+  }
+  if (trimmed.startsWith('/api/uploads/')) {
+    const backend = (process.env.NEXT_PUBLIC_API_URL || '').replace(/\/$/, '');
+    return backend ? `${backend}${trimmed}` : trimmed;
+  }
+  return trimmed;
+}
+

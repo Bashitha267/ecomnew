@@ -6,6 +6,7 @@ import { useCurrency, Currency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
 import { useAuth } from "../context/AuthContext";
 import { setCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
+import { getImageUrl } from "../lib/api";
 import {
   User,
   Search,
@@ -496,8 +497,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                       className="flex items-center space-x-3 py-3 hover:bg-neutral-50 px-2 transition-colors group"
                     >
                       <img
-                        src={item.colors[0]?.images[0] || item.colors[0]?.swatchImage}
+                        src={getImageUrl(item.colors[0]?.images[0] || item.colors[0]?.swatchImage)}
                         alt={item.name}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                        }}
                         className="w-12 h-14 object-cover bg-neutral-100"
                       />
                       <div className="flex-1 min-w-0 text-left">
@@ -543,7 +547,14 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                 <div className="mt-4 max-h-[60vh] overflow-y-auto divide-y divide-neutral-100 space-y-3">
                   {cart.map((item, idx) => (
                     <div key={`${item.productId}-${item.color}-${item.size}-${idx}`} className="pt-3 flex space-x-3 text-xs">
-                      <img src={item.image} alt={item.name} className="w-16 h-20 object-cover bg-neutral-100 rounded-xs" />
+                      <img
+                        src={getImageUrl(item.image)}
+                        alt={item.name}
+                        onError={(e) => {
+                          (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                        }}
+                        className="w-16 h-20 object-cover bg-neutral-100 rounded-xs"
+                      />
                       <div className="flex-1 flex flex-col justify-between">
                         <div>
                           <h4 className="font-serif text-sm font-medium text-neutral-900 line-clamp-1">{item.name}</h4>

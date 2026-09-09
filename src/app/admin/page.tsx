@@ -20,7 +20,7 @@ import { RegionalOrderMap } from "../../components/admin/RegionalOrderMap";
 import { HomepageVideoManager } from "../../components/admin/HomepageVideoManager";
 import { CommunitySpotlightManager } from "../../components/admin/CommunitySpotlightManager";
 import { UserManager } from "../../components/admin/UserManager";
-import { getApiError, productsApi, analyticsApi } from "../../lib/api";
+import { getApiError, productsApi, analyticsApi, getImageUrl } from "../../lib/api";
 import {
   LayoutDashboard,
   ShoppingBag,
@@ -1331,8 +1331,11 @@ export default function AdminPage() {
                       {products.slice(0, 3).map((prod) => (
                         <div key={prod.id} className="flex items-center space-x-3 text-xs">
                           <img
-                            src={prod.colors[0]?.images[0] || prod.colors[0]?.swatchImage}
+                            src={getImageUrl(prod.colors[0]?.images[0] || prod.colors[0]?.swatchImage)}
                             alt={prod.name}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                            }}
                             className="w-10 h-12 object-cover rounded bg-neutral-800"
                           />
                           <div className="flex-1 min-w-0">
@@ -1721,7 +1724,7 @@ export default function AdminPage() {
                       )}
                       {filteredProducts.map((prod) => {
                         const totalImages = prod.colors.reduce((sum, c) => sum + (c.images?.length || 0), 0);
-                        const firstImage = prod.colors[0]?.images[0] || prod.colors[0]?.swatchImage;
+                        const firstImage = getImageUrl(prod.colors[0]?.images[0] || prod.colors[0]?.swatchImage);
                         return (
                           <tr key={prod.id} className="hover:bg-neutral-800/40 transition-colors">
                             <td className="py-4 px-4">
@@ -1729,6 +1732,9 @@ export default function AdminPage() {
                                 <img
                                   src={firstImage}
                                   alt={prod.name}
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                                  }}
                                   className="w-12 h-14 object-cover rounded bg-neutral-950 border border-neutral-800"
                                 />
                                 <div>
@@ -2203,7 +2209,7 @@ export default function AdminPage() {
                     </thead>
                     <tbody className="divide-y divide-neutral-800/80">
                       {topSellingItems.map((item, idx) => {
-                        const img = item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage;
+                        const img = getImageUrl(item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage);
                         return (
                           <tr key={item.product.id} className="hover:bg-neutral-800/40 transition-colors">
                             <td className="py-3.5 px-4 text-center font-mono font-bold text-neutral-400">
@@ -2219,6 +2225,9 @@ export default function AdminPage() {
                                   <img
                                     src={img}
                                     alt={item.product.name}
+                                    onError={(e) => {
+                                      (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                                    }}
                                     className="w-10 h-12 object-cover rounded bg-neutral-950 shrink-0 border border-neutral-700"
                                   />
                                 ) : (
@@ -3002,8 +3011,11 @@ export default function AdminPage() {
                             <div className="flex items-center gap-3 w-full">
                               <div className="relative w-12 h-12 rounded border border-neutral-700 overflow-hidden bg-neutral-950 flex-shrink-0">
                                 <img
-                                  src={color.swatchImage}
+                                  src={getImageUrl(color.swatchImage)}
                                   alt="Swatch preview"
+                                  onError={(e) => {
+                                    (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                                  }}
                                   className="w-full h-full object-cover"
                                 />
                               </div>
@@ -3090,7 +3102,14 @@ export default function AdminPage() {
                         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2 mb-3">
                           {color.images?.map((imgUrl, imgIdx) => (
                             <div key={imgIdx} className="relative aspect-[3/4] bg-neutral-950 rounded overflow-hidden group border border-neutral-800">
-                              <img src={imgUrl} alt={`Angle ${imgIdx + 1}`} className="w-full h-full object-cover" />
+                              <img
+                                src={getImageUrl(imgUrl)}
+                                alt={`Angle ${imgIdx + 1}`}
+                                onError={(e) => {
+                                  (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                                }}
+                                className="w-full h-full object-cover"
+                              />
                               <div className="absolute inset-0 bg-black/70 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                                 <button
                                   type="button"

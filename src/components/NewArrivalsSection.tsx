@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
-import { analyticsApi } from "../lib/api";
+import { analyticsApi, getImageUrl } from "../lib/api";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 
 export const NewArrivalsSection: React.FC = () => {
@@ -39,37 +39,39 @@ export const NewArrivalsSection: React.FC = () => {
   );
 
   return (
-    <section id="new-arrivals" className="py-20 md:py-28 px-4 md:px-8 bg-white text-black border-b border-neutral-100">
-      <div className="max-w-[1700px] mx-auto">
+    <section className="py-16 md:py-24 bg-white border-b border-neutral-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         
-        {/* Header Section */}
-        <div className="relative text-center mb-12 flex flex-col sm:flex-row items-center justify-between">
-          <div className="w-full sm:w-auto text-center sm:text-left">
-            <h2 className="text-2xl md:text-3xl font-light font-serif tracking-[0.2em] uppercase text-black">
+        {/* Header with Navigation */}
+        <div className="flex justify-between items-end mb-10">
+          <div>
+            <span className="text-[11px] font-mono tracking-widest text-neutral-400 uppercase block mb-1">
+              Curated Selection
+            </span>
+            <h2 className="text-2xl sm:text-3xl font-serif tracking-tight text-neutral-900 font-light">
               New Arrivals
             </h2>
           </div>
 
-          {/* Carousel Control Arrows */}
-          <div className="flex items-center space-x-3 mt-4 sm:mt-0">
-            <span className="text-xs font-mono text-neutral-400 tracking-widest mr-2">
-              0{currentPage + 1} / 0{totalPages || 1}
-            </span>
-            <button
-              onClick={handlePrev}
-              className="p-2.5 border border-neutral-200 text-black hover:bg-black hover:text-white transition-all rounded-full cursor-pointer"
-              aria-label="Previous 3 Products"
-            >
-              <ChevronLeft size={18} />
-            </button>
-            <button
-              onClick={handleNext}
-              className="p-2.5 border border-neutral-200 text-black hover:bg-black hover:text-white transition-all rounded-full cursor-pointer"
-              aria-label="Next 3 Products"
-            >
-              <ChevronRight size={18} />
-            </button>
-          </div>
+          {/* Navigation Controls */}
+          {totalPages > 1 && (
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handlePrev}
+                className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:border-neutral-900 hover:text-neutral-900 transition-colors cursor-pointer"
+                aria-label="Previous items"
+              >
+                <ChevronLeft size={16} />
+              </button>
+              <button
+                onClick={handleNext}
+                className="w-9 h-9 rounded-full border border-neutral-200 flex items-center justify-center text-neutral-600 hover:border-neutral-900 hover:text-neutral-900 transition-colors cursor-pointer"
+                aria-label="Next items"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 3 Products Grid */}
@@ -79,8 +81,10 @@ export const NewArrivalsSection: React.FC = () => {
           }`}
         >
           {currentProducts.map((product) => {
-            const img1 = product.colors[0]?.images[0] || product.colors[0]?.swatchImage;
-            const img2 = product.colors[0]?.images[1] || img1;
+            const raw1 = product.colors[0]?.images[0] || product.colors[0]?.swatchImage;
+            const raw2 = product.colors[0]?.images[1] || raw1;
+            const img1 = getImageUrl(raw1);
+            const img2 = getImageUrl(raw2, img1);
             return (
               <Link
                 key={product.id}
@@ -95,6 +99,9 @@ export const NewArrivalsSection: React.FC = () => {
                   <img
                     src={img1}
                     alt={product.name}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                    }}
                     className="w-full h-full object-cover object-center absolute inset-0 transition-opacity duration-700 ease-in-out group-hover:opacity-0"
                   />
 
@@ -102,6 +109,9 @@ export const NewArrivalsSection: React.FC = () => {
                   <img
                     src={img2}
                     alt={`${product.name} secondary view`}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = img1;
+                    }}
                     className="w-full h-full object-cover object-center absolute inset-0 opacity-0 transition-all duration-700 ease-in-out group-hover:opacity-100 group-hover:scale-105"
                   />
 

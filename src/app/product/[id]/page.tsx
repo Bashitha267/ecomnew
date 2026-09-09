@@ -4,7 +4,7 @@ import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useStore } from "../../../context/StoreContext";
 import { useCurrency } from "../../../context/CurrencyContext";
-import { analyticsApi, productsApi } from "../../../lib/api";
+import { analyticsApi, productsApi, getImageUrl } from "../../../lib/api";
 import { Navbar } from "../../../components/Navbar";
 import { Footer } from "../../../components/Footer";
 import { ProductSize, ProductReview, FullProduct } from "../../../data/data";
@@ -245,27 +245,33 @@ export default function ProductDetailPage({ params }: PageProps) {
           {/* LEFT COLUMN: UP TO 6 IMAGES GALLERY (2x2 or 2-column aesthetic layout) */}
           <div className="lg:col-span-7">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-              {galleryImages.map((imgUrl, idx) => (
-                <div
-                  key={idx}
-                  onClick={() => setActiveLightboxImg(imgUrl)}
-                  className="relative aspect-[3/4] bg-neutral-100 overflow-hidden cursor-zoom-in group"
-                >
-                  <img
-                    src={imgUrl}
-                    alt={`${product.name} - Angle ${idx + 1}`}
-                    className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
-                  />
-                  <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white p-1.5 rounded-full backdrop-blur-xs">
-                    <Maximize2 size={14} />
+              {galleryImages.map((imgUrl, idx) => {
+                const srcUrl = getImageUrl(imgUrl);
+                return (
+                  <div
+                    key={idx}
+                    onClick={() => setActiveLightboxImg(srcUrl)}
+                    className="relative aspect-[3/4] bg-neutral-100 overflow-hidden cursor-zoom-in group"
+                  >
+                    <img
+                      src={srcUrl}
+                      alt={`${product.name} - Angle ${idx + 1}`}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                      }}
+                      className="w-full h-full object-cover object-center group-hover:scale-105 transition-transform duration-700 ease-out"
+                    />
+                    <div className="absolute top-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity bg-black/60 text-white p-1.5 rounded-full backdrop-blur-xs">
+                      <Maximize2 size={14} />
+                    </div>
+                    {idx === 0 && product.badge && (
+                      <span className="absolute top-3 left-3 bg-black text-white text-[10px] font-mono uppercase tracking-widest px-2.5 py-1">
+                        {product.badge}
+                      </span>
+                    )}
                   </div>
-                  {idx === 0 && product.badge && (
-                    <span className="absolute top-3 left-3 bg-black text-white text-[10px] font-mono uppercase tracking-widest px-2.5 py-1">
-                      {product.badge}
-                    </span>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
 
@@ -330,8 +336,11 @@ export default function ProductDetailPage({ params }: PageProps) {
                     title={color.name}
                   >
                     <img
-                      src={color.swatchImage || color.images[0]}
+                      src={getImageUrl(color.swatchImage || color.images[0])}
                       alt={color.name}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                      }}
                       className="w-full h-full object-cover"
                     />
                     <div className="absolute inset-0 bg-black/5" />
@@ -655,8 +664,10 @@ export default function ProductDetailPage({ params }: PageProps) {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             {relatedProducts.map((rel) => {
-              const relImg1 = rel.colors[0]?.images[0] || rel.colors[0]?.swatchImage;
-              const relImg2 = rel.colors[0]?.images[1] || relImg1;
+              const raw1 = rel.colors[0]?.images[0] || rel.colors[0]?.swatchImage;
+              const raw2 = rel.colors[0]?.images[1] || raw1;
+              const relImg1 = getImageUrl(raw1);
+              const relImg2 = getImageUrl(raw2, relImg1);
               return (
                 <Link
                   key={rel.id}
@@ -667,11 +678,17 @@ export default function ProductDetailPage({ params }: PageProps) {
                     <img
                       src={relImg1}
                       alt={rel.name}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                      }}
                       className="w-full h-full object-cover absolute inset-0 transition-opacity duration-500 group-hover:opacity-0"
                     />
                     <img
                       src={relImg2}
                       alt={rel.name}
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = relImg1;
+                      }}
                       className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-500"
                     />
                     {rel.badge && (

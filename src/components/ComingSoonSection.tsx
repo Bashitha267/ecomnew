@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
+import { getImageUrl } from "../lib/api";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 
 export const ComingSoonSection: React.FC = () => {
@@ -78,8 +79,10 @@ export const ComingSoonSection: React.FC = () => {
           }`}
         >
           {currentProducts.map((product) => {
-            const img1 = product.colors[0]?.images[0] || product.colors[0]?.swatchImage;
-            const img2 = product.colors[0]?.images[1] || img1;
+            const raw1 = product.colors[0]?.images[0] || product.colors[0]?.swatchImage;
+            const raw2 = product.colors[0]?.images[1] || raw1;
+            const img1 = getImageUrl(raw1);
+            const img2 = getImageUrl(raw2, img1);
             return (
               <Link
                 key={product.id}
@@ -93,6 +96,9 @@ export const ComingSoonSection: React.FC = () => {
                   <img
                     src={img1}
                     alt={product.name}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                    }}
                     className="w-full h-full object-cover object-center absolute inset-0 transition-opacity duration-700 ease-in-out group-hover:opacity-0"
                   />
 
@@ -100,6 +106,9 @@ export const ComingSoonSection: React.FC = () => {
                   <img
                     src={img2}
                     alt={`${product.name} secondary view`}
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = img1;
+                    }}
                     className="w-full h-full object-cover object-center absolute inset-0 opacity-0 transition-all duration-700 ease-in-out group-hover:opacity-100 group-hover:scale-105"
                   />
 

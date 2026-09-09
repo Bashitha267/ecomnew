@@ -8,6 +8,7 @@ import { useCurrency } from "../../context/CurrencyContext";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
 import { ProductSize, FullProduct } from "../../data/data";
+import { getImageUrl } from "../../lib/api";
 import {
   SlidersHorizontal,
   Grid3X3,
@@ -540,8 +541,10 @@ function ShopCatalogContent() {
                 }`}
               >
                 {filteredProducts.map((p) => {
-                  const img1 = p.colors[0]?.images[0] || p.colors[0]?.swatchImage;
-                  const img2 = p.colors[0]?.images[1] || img1;
+                  const raw1 = p.colors[0]?.images[0] || p.colors[0]?.swatchImage;
+                  const raw2 = p.colors[0]?.images[1] || raw1;
+                  const img1 = getImageUrl(raw1);
+                  const img2 = getImageUrl(raw2, img1);
                   return (
                     <div key={p.id} className="group flex flex-col text-center relative">
                       
@@ -553,11 +556,17 @@ function ShopCatalogContent() {
                         <img
                           src={img1}
                           alt={p.name}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                          }}
                           className="w-full h-full object-cover absolute inset-0 transition-opacity duration-700 group-hover:opacity-0"
                         />
                         <img
                           src={img2}
                           alt={`${p.name} secondary angle`}
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = img1;
+                          }}
                           className="w-full h-full object-cover absolute inset-0 opacity-0 group-hover:opacity-100 group-hover:scale-105 transition-all duration-700 ease-out"
                         />
 
