@@ -6,7 +6,7 @@ import { useStore } from "../context/StoreContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
 import { setCookie, getCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
-import { Globe, ArrowRight } from "lucide-react";
+import { Globe } from "lucide-react";
 
 export const CountrySelectModal: React.FC = () => {
   const pathname = usePathname();
@@ -15,7 +15,6 @@ export const CountrySelectModal: React.FC = () => {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   
   const [isOpen, setIsOpen] = useState(false);
-  const [hoveredCountry, setHoveredCountry] = useState<string | null>(null);
 
   useEffect(() => {
     // If auth state is still resolving, wait
@@ -72,12 +71,32 @@ export const CountrySelectModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn text-white">
+      {/* Background Editorial Image on backdrop */}
+      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
+        <img
+          src="/cntrybg.avif"
+          alt="Backdrop"
+          className="w-full h-full object-cover object-center opacity-25 filter blur-xs scale-105"
+        />
+        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      </div>
+
       <div 
-        className="relative w-full max-w-2xl bg-neutral-950 border border-neutral-800/90 rounded-xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] p-6 sm:p-10 text-center overflow-hidden animate-scaleUp"
+        className="relative w-full max-w-2xl border border-neutral-800/90 rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] p-6 sm:p-10 text-center overflow-hidden animate-scaleUp bg-neutral-950/90 backdrop-blur-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="country-modal-title"
       >
+        {/* Background Editorial Image Inside Modal Box */}
+        <div className="absolute inset-0 pointer-events-none">
+          <img
+            src="/cntrybg.avif"
+            alt="Editorial Background"
+            className="w-full h-full object-cover object-center opacity-30"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/90 via-neutral-950/80 to-neutral-950/95" />
+        </div>
+
         {/* Subtle Ambient Background Light */}
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-amber-500/10 blur-3xl pointer-events-none rounded-full" />
 
@@ -85,7 +104,7 @@ export const CountrySelectModal: React.FC = () => {
         <div className="relative z-10 mb-6 sm:mb-8 space-y-2">
           <div className="inline-flex items-center space-x-2 text-[10px] font-mono tracking-[0.3em] uppercase text-neutral-400">
             <Globe size={13} className="text-amber-400" />
-            <span>Regional Atelier Selection</span>
+            <span>Regional Selection</span>
           </div>
 
           <h2
@@ -96,43 +115,33 @@ export const CountrySelectModal: React.FC = () => {
           </h2>
 
           <p className="text-xs sm:text-sm text-neutral-400 font-light max-w-md mx-auto leading-relaxed">
-            Welcome to Carlton Valley. Please choose your boutique destination for tailored collections, local currency, and white-glove regional delivery.
+            Please choose your country to browse local collections and currency.
           </p>
         </div>
 
-        {/* Two Regional Boutique Cards */}
-        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+        {/* Two Simplified Flag + Country Cards */}
+        <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
           {/* Australia Card */}
           <button
             type="button"
             onClick={() => handleSelectCountry("Australia")}
-            onMouseEnter={() => setHoveredCountry("Australia")}
-            onMouseLeave={() => setHoveredCountry(null)}
-            className={`group relative text-left p-5 sm:p-6 rounded-lg border transition-all duration-300 flex flex-col justify-between cursor-pointer ${
-              selectedCountry === "Australia" || hoveredCountry === "Australia"
-                ? "bg-neutral-900/90 border-blue-500/80 shadow-[0_0_30px_rgba(59,130,246,0.15)] scale-[1.02]"
-                : "bg-neutral-900/40 border-neutral-800 hover:border-neutral-700"
-            }`}
+            className="group relative p-6 sm:p-8 rounded-xl border border-neutral-700/60 bg-neutral-950/75 hover:bg-neutral-900/90 hover:border-blue-500/80 backdrop-blur-md transition-all duration-300 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:scale-[1.02] shadow-xl hover:shadow-blue-500/15"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-3xl sm:text-4xl">🇦🇺</div>
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-blue-950/70 border border-blue-800/80 text-blue-300">
-                AUD ($)
-              </span>
+            <div className="w-20 h-12 sm:w-24 sm:h-14 overflow-hidden rounded-md shadow-md border border-neutral-700/80 group-hover:border-blue-400 transition-colors">
+              <img
+                src="/flags/au.svg"
+                alt="Australia Flag"
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            <div className="space-y-1 mb-4">
-              <h3 className="text-lg font-serif font-bold text-white tracking-wide uppercase">
+            <div>
+              <h3 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider uppercase group-hover:text-blue-300 transition-colors">
                 Australia
               </h3>
-              <p className="text-xs text-neutral-400 font-light">
-                Prices in Australian Dollars (AUD). Direct dispatch across Australia & New Zealand.
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-neutral-800/80 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-blue-400 group-hover:text-blue-300">
-              <span>Enter Australia Store</span>
-              <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+              <span className="text-xs font-mono text-neutral-400 tracking-wider mt-1 inline-block">
+                AUD ($)
+              </span>
             </div>
           </button>
 
@@ -140,33 +149,23 @@ export const CountrySelectModal: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSelectCountry("Sri Lanka")}
-            onMouseEnter={() => setHoveredCountry("Sri Lanka")}
-            onMouseLeave={() => setHoveredCountry(null)}
-            className={`group relative text-left p-5 sm:p-6 rounded-lg border transition-all duration-300 flex flex-col justify-between cursor-pointer ${
-              selectedCountry === "Sri Lanka" || hoveredCountry === "Sri Lanka"
-                ? "bg-neutral-900/90 border-amber-500/80 shadow-[0_0_30px_rgba(245,158,11,0.15)] scale-[1.02]"
-                : "bg-neutral-900/40 border-neutral-800 hover:border-neutral-700"
-            }`}
+            className="group relative p-6 sm:p-8 rounded-xl border border-neutral-700/60 bg-neutral-950/75 hover:bg-neutral-900/90 hover:border-amber-500/80 backdrop-blur-md transition-all duration-300 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:scale-[1.02] shadow-xl hover:shadow-amber-500/15"
           >
-            <div className="flex items-start justify-between mb-4">
-              <div className="text-3xl sm:text-4xl">🇱🇰</div>
-              <span className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded bg-amber-950/70 border border-amber-800/80 text-amber-300">
-                LKR (Rs)
-              </span>
+            <div className="w-20 h-12 sm:w-24 sm:h-14 overflow-hidden rounded-md shadow-md border border-neutral-700/80 group-hover:border-amber-400 transition-colors">
+              <img
+                src="/flags/lk.svg"
+                alt="Sri Lanka Flag"
+                className="w-full h-full object-cover"
+              />
             </div>
 
-            <div className="space-y-1 mb-4">
-              <h3 className="text-lg font-serif font-bold text-white tracking-wide uppercase">
+            <div>
+              <h3 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider uppercase group-hover:text-amber-300 transition-colors">
                 Sri Lanka
               </h3>
-              <p className="text-xs text-neutral-400 font-light">
-                Prices in Sri Lankan Rupees (LKR). Islandwide express concierge & atelier delivery.
-              </p>
-            </div>
-
-            <div className="pt-3 border-t border-neutral-800/80 flex items-center justify-between text-xs font-semibold uppercase tracking-wider text-amber-400 group-hover:text-amber-300">
-              <span>Enter Sri Lanka Store</span>
-              <span className="transition-transform duration-300 group-hover:translate-x-1">→</span>
+              <span className="text-xs font-mono text-neutral-400 tracking-wider mt-1 inline-block">
+                LKR (Rs)
+              </span>
             </div>
           </button>
         </div>
@@ -179,3 +178,5 @@ export const CountrySelectModal: React.FC = () => {
     </div>
   );
 };
+
+
