@@ -4,7 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
-import { analyticsApi, getImageUrl } from "../lib/api";
+import { analyticsApi, getImageUrl, getProductCardImages } from "../lib/api";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 
 export const NewArrivalsSection: React.FC = () => {
@@ -81,10 +81,7 @@ export const NewArrivalsSection: React.FC = () => {
           }`}
         >
           {currentProducts.map((product) => {
-            const raw1 = product.colors[0]?.images[0] || product.colors[0]?.swatchImage;
-            const raw2 = product.colors[0]?.images[1] || raw1;
-            const img1 = getImageUrl(raw1);
-            const img2 = getImageUrl(raw2, img1);
+            const { img1, img2 } = getProductCardImages(product.colors[0]);
             return (
               <Link
                 key={product.id}

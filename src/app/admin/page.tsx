@@ -1313,7 +1313,8 @@ export default function AdminPage() {
                     </button>
                     <button
                       onClick={() => {
-                        setSelectedProductForReview(products[0]?.id || "");
+                        setSelectedProductForReview("");
+                        setReviewProductSearch("");
                         setIsReviewModalOpen(true);
                       }}
                       className="w-full bg-neutral-800 hover:bg-neutral-700 text-white py-2.5 px-4 rounded text-xs font-semibold uppercase tracking-wider transition-colors flex items-center justify-center space-x-2"
@@ -1883,7 +1884,8 @@ export default function AdminPage() {
                 </div>
                 <button
                   onClick={() => {
-                    setSelectedProductForReview(products[0]?.id || "");
+                    setSelectedProductForReview("");
+                    setReviewProductSearch("");
                     setIsReviewModalOpen(true);
                   }}
                   className="bg-white text-black py-2 px-4 rounded text-xs font-semibold uppercase tracking-wider hover:bg-neutral-200 transition-colors flex items-center space-x-1.5"
@@ -3702,19 +3704,36 @@ export default function AdminPage() {
                   <input
                     type="text"
                     required
-                    placeholder="Search product by name..."
-                    value={reviewProductSearch || (allProducts.find(p => p.id === selectedProductForReview)?.name ?? "")}
+                    placeholder="Search product by name or SKU..."
+                    value={reviewProductSearch}
                     onFocus={() => {
-                      setReviewProductSearch(allProducts.find(p => p.id === selectedProductForReview)?.name ?? "");
                       setShowReviewProductDropdown(true);
                     }}
-                    onBlur={() => setTimeout(() => setShowReviewProductDropdown(false), 150)}
+                    onBlur={() => setTimeout(() => setShowReviewProductDropdown(false), 200)}
                     onChange={(e) => {
-                      setReviewProductSearch(e.target.value);
+                      const val = e.target.value;
+                      setReviewProductSearch(val);
                       setShowReviewProductDropdown(true);
+                      if (!val.trim()) {
+                        setSelectedProductForReview("");
+                      }
                     }}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:outline-none focus:border-neutral-500"
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 pr-8 text-white focus:outline-none focus:border-neutral-500"
                   />
+                  {reviewProductSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReviewProductSearch("");
+                        setSelectedProductForReview("");
+                        setShowReviewProductDropdown(true);
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-neutral-400 hover:text-white p-1"
+                      title="Clear search"
+                    >
+                      <X size={14} />
+                    </button>
+                  )}
                   {showReviewProductDropdown && (
                     <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded shadow-xl max-h-52 overflow-y-auto">
                       {allProducts

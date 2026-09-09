@@ -8,7 +8,7 @@ import { useCurrency } from "../../context/CurrencyContext";
 import { Navbar } from "../../components/Navbar";
 import { Footer } from "../../components/Footer";
 import { ProductSize, FullProduct } from "../../data/data";
-import { getImageUrl } from "../../lib/api";
+import { getImageUrl, getProductCardImages } from "../../lib/api";
 import {
   SlidersHorizontal,
   Grid3X3,
@@ -541,10 +541,7 @@ function ShopCatalogContent() {
                 }`}
               >
                 {filteredProducts.map((p) => {
-                  const raw1 = p.colors[0]?.images[0] || p.colors[0]?.swatchImage;
-                  const raw2 = p.colors[0]?.images[1] || raw1;
-                  const img1 = getImageUrl(raw1);
-                  const img2 = getImageUrl(raw2, img1);
+                  const { img1, img2 } = getProductCardImages(p.colors[0]);
                   return (
                     <div key={p.id} className="group flex flex-col text-center relative">
                       

@@ -156,7 +156,11 @@ export default function ProductDetailPage({ params }: PageProps) {
   }
 
   const currentColor = product.colors[selectedColorIdx] || product.colors[0];
-  const galleryImages = currentColor?.images || [];
+  const galleryImages = [
+    ...(currentColor?.swatchImage ? [currentColor.swatchImage] : []),
+    ...(currentColor?.images || []),
+  ].filter((url, index, self) => Boolean(url && url.trim()) && self.indexOf(url) === index);
+  const displayGallery = galleryImages.length > 0 ? galleryImages : ['/images/cat_shop_all.jpg'];
   const afterpayInstallment = (product.priceAUD / 4).toFixed(2);
 
   const handleAddToCart = () => {
@@ -166,7 +170,7 @@ export default function ProductDetailPage({ params }: PageProps) {
       priceAUD: product.priceAUD,
       color: currentColor.name,
       size: selectedSize,
-      image: galleryImages[0] || currentColor.swatchImage,
+      image: displayGallery[0] || currentColor.swatchImage,
       quantity: quantity,
     });
     // ── Analytics: fire an 'add_to_bag' event ──────────────────────────────
@@ -245,17 +249,17 @@ export default function ProductDetailPage({ params }: PageProps) {
           {/* LEFT COLUMN: UP TO 6 IMAGES GALLERY (2x2 or 2-column aesthetic layout) */}
           <div className="lg:col-span-7">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-4">
-              {galleryImages.map((imgUrl, idx) => {
+              {displayGallery.map((imgUrl, idx) => {
                 const srcUrl = getImageUrl(imgUrl);
                 return (
                   <div
-                    key={idx}
+                    key={`${currentColor?.id || selectedColorIdx}-${idx}-${srcUrl}`}
                     onClick={() => setActiveLightboxImg(srcUrl)}
                     className="relative aspect-[3/4] bg-neutral-100 overflow-hidden cursor-zoom-in group"
                   >
                     <img
                       src={srcUrl}
-                      alt={`${product.name} - Angle ${idx + 1}`}
+                      alt={`${product.name} - ${currentColor?.name || 'Angle'} ${idx + 1}`}
                       onError={(e) => {
                         (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
                       }}
@@ -312,40 +316,62 @@ export default function ProductDetailPage({ params }: PageProps) {
               </div>
             </div>
 
-            {/* COLOR SELECTION (With Swatches) */}
+            {/* COLOR SELECTION (Shows Color Name + Swatch, switches gallery on click) */}
             <div className="space-y-2.5 pt-2 border-t border-neutral-100">
               <div className="flex justify-between items-center text-xs">
                 <span className="text-neutral-500">
-                  Color: <strong className="text-neutral-900 font-medium font-serif">{currentColor?.name}</strong>
+                  Color: <strong className="text-neutral-900 font-medium font-serif">{currentColor?.name || "Standard"}</strong>
                 </span>
                 <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
                   {product.colors.length} {product.colors.length === 1 ? "Option" : "Options"}
                 </span>
               </div>
 
-              <div className="flex items-center space-x-2.5">
-                {product.colors.map((color, idx) => (
-                  <button
-                    key={color.id || idx}
-                    onClick={() => setSelectedColorIdx(idx)}
-                    className={`relative w-14 h-16 rounded overflow-hidden border-2 transition-all group ${
-                      selectedColorIdx === idx
-                        ? "border-black ring-1 ring-black"
-                        : "border-neutral-200 hover:border-neutral-400 opacity-80 hover:opacity-100"
-                    }`}
-                    title={color.name}
-                  >
-                    <img
-                      src={getImageUrl(color.swatchImage || color.images[0])}
-                      alt={color.name}
-                      onError={(e) => {
-                        (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+              <div className="flex flex-wrap items-center gap-2.5">
+                {product.colors.map((color, idx) => {
+                  const isSelected = selectedColorIdx === idx;
+                  const thumbUrl = getImageUrl(color.swatchImage || color.images?.[0]);
+                  return (
+                    <button
+                      key={color.id || idx}
+                      type="button"
+                      onClick={() => {
+                        setSelectedColorIdx(idx);
+                        setActiveLightboxImg(null);
                       }}
-                      className="w-full h-full object-cover"
-                    />
-                    <div className="absolute inset-0 bg-black/5" />
-                  </button>
-                ))}
+                      className={`flex items-center space-x-2.5 px-3 py-2 rounded-xs border transition-all text-left ${
+                        isSelected
+                          ? "border-black bg-neutral-900 text-white shadow-xs ring-1 ring-black"
+                          : "border-neutral-200 hover:border-neutral-400 bg-white text-neutral-900"
+                      }`}
+                      title={color.name}
+                    >
+                      {/* Color thumbnail / swatch circle */}
+                      <div className="relative w-6 h-6 rounded-full overflow-hidden flex-shrink-0 border border-neutral-300 bg-neutral-100">
+                        {color.hex ? (
+                          <span
+                            className="w-full h-full block"
+                            style={{ backgroundColor: color.hex }}
+                          />
+                        ) : (
+                          <img
+                            src={thumbUrl}
+                            alt={color.name}
+                            onError={(e) => {
+                              (e.currentTarget as HTMLImageElement).src = '/images/cat_shop_all.jpg';
+                            }}
+                            className="w-full h-full object-cover"
+                          />
+                        )}
+                      </div>
+
+                      {/* Color Name */}
+                      <span className="text-xs font-mono font-medium tracking-tight">
+                        {color.name}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
             </div>
 

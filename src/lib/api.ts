@@ -411,3 +411,34 @@ export function getImageUrl(url?: string | null, fallback = '/images/cat_shop_al
   return trimmed;
 }
 
+export interface CardColorVariant {
+  swatchImage?: string;
+  images?: string[];
+}
+
+/**
+ * Returns primary cover image and hover switch image for product cards.
+ * If a swatch thumbnail cover image was uploaded, it acts as the primary cover,
+ * and hovering switches to the first product photo.
+ */
+export function getProductCardImages(color?: CardColorVariant | null): { img1: string; img2: string } {
+  const fallback = '/images/cat_shop_all.jpg';
+  if (!color) return { img1: fallback, img2: fallback };
+
+  const swatch = color.swatchImage?.trim();
+  const photos = (color.images || []).map(p => (p || '').trim()).filter(Boolean);
+
+  if (swatch) {
+    const img1 = getImageUrl(swatch);
+    // Find an alternate photo for hover switch
+    const altPhoto = photos.find(p => p !== swatch) || photos[0] || swatch;
+    const img2 = getImageUrl(altPhoto, img1);
+    return { img1, img2 };
+  }
+
+  const img1 = getImageUrl(photos[0], fallback);
+  const img2 = getImageUrl(photos[1] || photos[0], img1);
+  return { img1, img2 };
+}
+
+
