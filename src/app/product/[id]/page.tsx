@@ -4,7 +4,7 @@ import React, { useState, use, useEffect } from "react";
 import Link from "next/link";
 import { useStore } from "../../../context/StoreContext";
 import { useCurrency } from "../../../context/CurrencyContext";
-import { analyticsApi } from "../../../lib/api";
+import { analyticsApi, productsApi } from "../../../lib/api";
 import { Navbar } from "../../../components/Navbar";
 import { Footer } from "../../../components/Footer";
 import { ProductSize, ProductReview, FullProduct } from "../../../data/data";
@@ -32,17 +32,52 @@ interface PageProps {
 
 export default function ProductDetailPage({ params }: PageProps) {
   const { id } = use(params);
-  const { getProductById, products, addToCart, addReview } = useStore();
+  const { getProductById, products, addToCart, addReview, isLoading: storeLoading } = useStore();
   const { formatPrice, currency } = useCurrency();
 
-  // Retrieve current product (fallback to first product if not found)
-  const product: FullProduct = getProductById(id) || products[0];
+  // Local state for direct API fetch fallback if product not in store cache yet
+  const [directProduct, setDirectProduct] = useState<FullProduct | null>(null);
+  const [directLoading, setDirectLoading] = useState(false);
+  const [hasAttemptedFetch, setHasAttemptedFetch] = useState(false);
+
+  // Retrieve current product by ID (do NOT fall back prematurely to products[0])
+  const productFromStore = getProductById(id);
+  const product: FullProduct | undefined = productFromStore || (directProduct ?? undefined);
+
+  // If not in store context and store finished loading, fetch directly from API
+  useEffect(() => {
+    if (!productFromStore && !storeLoading && id && !hasAttemptedFetch) {
+      setDirectLoading(true);
+      productsApi
+        .getById(id)
+        .then((res) => {
+          if (res.data?.success && res.data?.data) {
+            setDirectProduct(res.data.data);
+          }
+        })
+        .catch(() => {})
+        .finally(() => {
+          setDirectLoading(false);
+          setHasAttemptedFetch(true);
+        });
+    }
+  }, [id, productFromStore, storeLoading, hasAttemptedFetch]);
 
   // Selected state
   const [selectedColorIdx, setSelectedColorIdx] = useState(0);
-  const [selectedSize, setSelectedSize] = useState<ProductSize>(product?.sizes?.[0] || "M");
+  const [selectedSize, setSelectedSize] = useState<ProductSize>("M");
   const [quantity, setQuantity] = useState(1);
   const [isAddedToBag, setIsAddedToBag] = useState(false);
+
+  // Sync size when product finishes loading
+  useEffect(() => {
+    if (product?.sizes?.length) {
+      if (!product.sizes.includes(selectedSize)) {
+        setSelectedSize(product.sizes[0]);
+      }
+    }
+    setSelectedColorIdx(0);
+  }, [product?.id]);
 
   // Accordion states
   const [isDescOpen, setIsDescOpen] = useState(true);
@@ -78,15 +113,44 @@ export default function ProductDetailPage({ params }: PageProps) {
     }
   }, [product?.id]);
 
+  // 1. Still loading data — show luxury loading indicator
+  const isPageLoading = storeLoading || directLoading || (!product && !hasAttemptedFetch);
+  if (isPageLoading) {
+    return (
+      <div className="min-h-screen bg-white text-neutral-900 font-sans antialiased flex flex-col selection:bg-neutral-900 selection:text-white">
+        <Navbar />
+        <main className="flex-1 flex flex-col items-center justify-center pt-28 md:pt-36 pb-20 min-h-[65vh]">
+          <div className="flex flex-col items-center justify-center space-y-4 text-center">
+            <div className="relative w-12 h-12 flex items-center justify-center">
+              <div className="w-10 h-10 border-2 border-neutral-200 border-t-neutral-900 rounded-full animate-spin" />
+            </div>
+            <p className="font-serif text-xs uppercase tracking-[0.3em] text-neutral-400 animate-pulse">
+              Loading Piece...
+            </p>
+          </div>
+        </main>
+        <Footer />
+      </div>
+    );
+  }
+
+  // 2. Finished loading and product genuinely doesn't exist
   if (!product) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-white text-black font-sans">
-        <div className="text-center space-y-4">
-          <h2 className="text-2xl font-serif">Product Not Found</h2>
-          <Link href="/shop" className="text-xs uppercase tracking-widest underline">
-            Return to Collection
-          </Link>
-        </div>
+      <div className="min-h-screen bg-white text-black font-sans flex flex-col selection:bg-neutral-900 selection:text-white">
+        <Navbar />
+        <main className="flex-1 flex items-center justify-center py-24 min-h-[60vh]">
+          <div className="text-center space-y-4">
+            <h2 className="text-2xl font-serif">Product Not Found</h2>
+            <p className="text-xs text-neutral-500 max-w-sm mx-auto">
+              The piece you are looking for is currently unavailable or may have been archived.
+            </p>
+            <Link href="/shop" className="inline-block text-xs uppercase tracking-widest underline pt-2 hover:text-neutral-600 transition-colors">
+              Return to Collection
+            </Link>
+          </div>
+        </main>
+        <Footer />
       </div>
     );
   }

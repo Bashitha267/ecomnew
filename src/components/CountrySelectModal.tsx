@@ -6,7 +6,6 @@ import { useStore } from "../context/StoreContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
 import { setCookie, getCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
-import { Globe } from "lucide-react";
 
 export const CountrySelectModal: React.FC = () => {
   const pathname = usePathname();
@@ -71,63 +70,50 @@ export const CountrySelectModal: React.FC = () => {
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6 bg-black/85 backdrop-blur-md animate-fadeIn text-white">
-      {/* Background Editorial Image on backdrop */}
-      <div className="absolute inset-0 -z-10 overflow-hidden pointer-events-none">
-        <img
-          src="/cntrybg.avif"
-          alt="Backdrop"
-          className="w-full h-full object-cover object-center opacity-25 filter blur-xs scale-105"
-        />
-        <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
-      </div>
-
       <div 
-        className="relative w-full max-w-2xl border border-neutral-800/90 rounded-2xl shadow-[0_25px_70px_rgba(0,0,0,0.95)] p-6 sm:p-10 text-center overflow-hidden animate-scaleUp bg-neutral-950/90 backdrop-blur-xl"
+        className="relative w-full max-w-2xl border border-white/20 rounded-2xl shadow-[0_25px_80px_rgba(0,0,0,0.95)] p-6 sm:p-10 text-center overflow-hidden animate-scaleUp bg-black/80 backdrop-blur-xl"
         role="dialog"
         aria-modal="true"
         aria-labelledby="country-modal-title"
       >
-        {/* Background Editorial Image Inside Modal Box */}
-        <div className="absolute inset-0 pointer-events-none">
+        {/* Background Editorial Image Inside Modal Box Only - High Visibility */}
+        <div className="absolute inset-0 pointer-events-none z-0">
           <img
             src="/cntrybg.avif"
-            alt="Editorial Background"
-            className="w-full h-full object-cover object-center opacity-30"
+            alt="Carlton Valley Fashion Editorial"
+            className="w-full h-full object-cover object-center opacity-85"
           />
-          <div className="absolute inset-0 bg-gradient-to-b from-neutral-950/90 via-neutral-950/80 to-neutral-950/95" />
+          {/* Subtle monochrome gradient scrim for crystal clear readability */}
+          <div className="absolute inset-0 bg-gradient-to-b from-black/75 via-black/50 to-black/80" />
         </div>
 
-        {/* Subtle Ambient Background Light */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-96 h-32 bg-amber-500/10 blur-3xl pointer-events-none rounded-full" />
-
-        {/* Top Header */}
+        {/* Top Header - Pure White & Neutral Monochrome */}
         <div className="relative z-10 mb-6 sm:mb-8 space-y-2">
-          <div className="inline-flex items-center space-x-2 text-[10px] font-mono tracking-[0.3em] uppercase text-neutral-400">
-            <Globe size={13} className="text-amber-400" />
-            <span>Regional Selection</span>
+          <div className="inline-block text-[10px] font-mono tracking-[0.35em] uppercase text-neutral-300">
+            Regional Selection
           </div>
 
           <h2
             id="country-modal-title"
-            className="text-2xl sm:text-3xl font-serif font-light tracking-wide uppercase text-white"
+            className="text-2xl sm:text-3xl font-serif font-light tracking-[0.12em] uppercase text-white"
           >
             Select Your Destination
           </h2>
 
-          <p className="text-xs sm:text-sm text-neutral-400 font-light max-w-md mx-auto leading-relaxed">
+          <p className="text-xs sm:text-sm text-neutral-300 font-light max-w-md mx-auto leading-relaxed">
             Please choose your country to browse local collections and currency.
           </p>
         </div>
 
-        {/* Two Simplified Flag + Country Cards */}
+        {/* Two Simplified Flag + Country Cards - White & Black Theme */}
         <div className="relative z-10 grid grid-cols-1 sm:grid-cols-2 gap-4 sm:gap-6 mb-6">
           {/* Australia Card */}
           <button
             type="button"
             onClick={() => handleSelectCountry("Australia")}
-            className="group relative p-6 sm:p-8 rounded-xl border border-neutral-700/60 bg-neutral-950/75 hover:bg-neutral-900/90 hover:border-blue-500/80 backdrop-blur-md transition-all duration-300 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:scale-[1.02] shadow-xl hover:shadow-blue-500/15"
+            className="group relative p-6 sm:p-8 rounded-xl border border-white/20 bg-black/60 hover:bg-black/85 hover:border-white transition-all duration-300 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:scale-[1.03] shadow-2xl hover:shadow-[0_0_30px_rgba(255,255,255,0.12)] backdrop-blur-md"
           >
-            <div className="w-20 h-12 sm:w-24 sm:h-14 overflow-hidden rounded-md shadow-md border border-neutral-700/80 group-hover:border-blue-400 transition-colors">
+            <div className="w-20 h-12 sm:w-24 sm:h-14 overflow-hidden rounded-md shadow-md border border-white/25 group-hover:border-white transition-colors">
               <img
                 src="/flags/au.svg"
                 alt="Australia Flag"
@@ -136,10 +122,10 @@ export const CountrySelectModal: React.FC = () => {
             </div>
 
             <div>
-              <h3 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider uppercase group-hover:text-blue-300 transition-colors">
+              <h3 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider uppercase group-hover:text-white transition-colors">
                 Australia
               </h3>
-              <span className="text-xs font-mono text-neutral-400 tracking-wider mt-1 inline-block">
+              <span className="text-xs font-mono text-neutral-300 tracking-wider mt-1 inline-block">
                 AUD ($)
               </span>
             </div>
@@ -149,9 +135,9 @@ export const CountrySelectModal: React.FC = () => {
           <button
             type="button"
             onClick={() => handleSelectCountry("Sri Lanka")}
-            className="group relative p-6 sm:p-8 rounded-xl border border-neutral-700/60 bg-neutral-950/75 hover:bg-neutral-900/90 hover:border-amber-500/80 backdrop-blur-md transition-all duration-300 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:scale-[1.02] shadow-xl hover:shadow-amber-500/15"
+            className="group relative p-6 sm:p-8 rounded-xl border border-white/20 bg-black/60 hover:bg-black/85 hover:border-white transition-all duration-300 flex flex-col items-center justify-center text-center space-y-4 cursor-pointer hover:scale-[1.03] shadow-2xl hover:shadow-[0_0_30px_rgba(255,255,255,0.12)] backdrop-blur-md"
           >
-            <div className="w-20 h-12 sm:w-24 sm:h-14 overflow-hidden rounded-md shadow-md border border-neutral-700/80 group-hover:border-amber-400 transition-colors">
+            <div className="w-20 h-12 sm:w-24 sm:h-14 overflow-hidden rounded-md shadow-md border border-white/25 group-hover:border-white transition-colors">
               <img
                 src="/flags/lk.svg"
                 alt="Sri Lanka Flag"
@@ -160,10 +146,10 @@ export const CountrySelectModal: React.FC = () => {
             </div>
 
             <div>
-              <h3 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider uppercase group-hover:text-amber-300 transition-colors">
+              <h3 className="text-lg sm:text-xl font-serif font-bold text-white tracking-wider uppercase group-hover:text-white transition-colors">
                 Sri Lanka
               </h3>
-              <span className="text-xs font-mono text-neutral-400 tracking-wider mt-1 inline-block">
+              <span className="text-xs font-mono text-neutral-300 tracking-wider mt-1 inline-block">
                 LKR (Rs)
               </span>
             </div>
@@ -171,12 +157,13 @@ export const CountrySelectModal: React.FC = () => {
         </div>
 
         {/* Bottom Note */}
-        <p className="relative z-10 text-[11px] text-neutral-500 font-mono tracking-wide">
+        <p className="relative z-10 text-[11px] text-neutral-400 font-mono tracking-wide">
           You can switch your store region or currency anytime from the navigation bar.
         </p>
       </div>
     </div>
   );
 };
+
 
 

@@ -145,16 +145,13 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                   setIsCurrencyOpen(!isCurrencyOpen);
                   setIsUserDropdownOpen(false);
                 }}
-                className={`flex items-center space-x-1.5 tracking-wider text-xs md:text-[13px] font-medium transition-opacity py-1 px-1.5 rounded cursor-pointer ${
+                className={`flex items-center space-x-1 tracking-wider text-xs md:text-[13px] font-medium transition-opacity py-1 px-1.5 rounded cursor-pointer ${
                   scrolled ? "text-black hover:opacity-60" : "text-white hover:opacity-80"
                 }`}
                 aria-expanded={isCurrencyOpen}
-                title="Select boutique destination and currency"
+                title="Select currency"
               >
-                <span className="text-sm leading-none">
-                  {selectedCountry === "Sri Lanka" ? "🇱🇰" : "🇦🇺"}
-                </span>
-                <span className="font-mono text-xs">
+                <span className="font-mono text-xs uppercase tracking-wider font-semibold">
                   {selectedCountry === "Sri Lanka" ? "LKR" : "AUD"}
                 </span>
                 <ChevronDown size={13} className={`transition-transform duration-200 ${isCurrencyOpen ? "rotate-180" : ""}`} />
@@ -182,8 +179,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                       selectedCountry === "Australia" ? "font-bold text-black bg-neutral-50" : "text-neutral-700"
                     }`}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">🇦🇺</span>
+                    <div className="flex items-center space-x-2.5">
+                      <img src="/flags/au.svg" alt="Australia" className="w-5 h-3.5 object-cover rounded-xs border border-neutral-200 shadow-xs" />
                       <div>
                         <p className="font-medium leading-tight">Australia</p>
                         <p className="text-[10px] text-neutral-500 font-mono">AUD ($)</p>
@@ -208,8 +205,8 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                       selectedCountry === "Sri Lanka" ? "font-bold text-black bg-neutral-50" : "text-neutral-700"
                     }`}
                   >
-                    <div className="flex items-center space-x-2">
-                      <span className="text-base">🇱🇰</span>
+                    <div className="flex items-center space-x-2.5">
+                      <img src="/flags/lk.svg" alt="Sri Lanka" className="w-5 h-3.5 object-cover rounded-xs border border-neutral-200 shadow-xs" />
                       <div>
                         <p className="font-medium leading-tight">Sri Lanka</p>
                         <p className="text-[10px] text-neutral-500 font-mono">LKR (Rs)</p>
@@ -219,6 +216,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                   </button>
                 </div>
               )}
+
             </div>
 
             {/* User Account / Profile Display (Displays User Name in Header) */}
@@ -430,7 +428,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                       : "border-neutral-500/40 text-neutral-300"
                   }`}
                 >
-                  <span className="text-sm">🇦🇺</span>
+                  <img src="/flags/au.svg" alt="Australia" className="w-4 h-3 object-cover rounded-xs" />
                   <span>Australia (AUD)</span>
                 </button>
                 <button
@@ -450,7 +448,7 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                       : "border-neutral-500/40 text-neutral-300"
                   }`}
                 >
-                  <span className="text-sm">🇱🇰</span>
+                  <img src="/flags/lk.svg" alt="Sri Lanka" className="w-4 h-3 object-cover rounded-xs" />
                   <span>Sri Lanka (LKR)</span>
                 </button>
               </div>
