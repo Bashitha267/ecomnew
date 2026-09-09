@@ -86,6 +86,7 @@ export default function AdminPage() {
     deleteOrder,
     refreshOrders,
     addReview,
+    addAdminReview,
     updateReviewStatus,
     deleteReview,
     resetStoreData,
@@ -133,6 +134,7 @@ export default function AdminPage() {
 
   // Real analytics data from server (views / clicks / add_to_bag per product)
   const [analyticsMap, setAnalyticsMap] = useState<Record<string, { views: number; clicks: number; addToBag: number }>>({});
+  const [engagementSort, setEngagementSort] = useState<"views" | "clicks" | "addToBag">("views");
 
   useEffect(() => {
     if (activeTab !== "reports") return;
@@ -231,6 +233,12 @@ export default function AdminPage() {
     mediaType: "photo",
     mediaUrl: "",
   });
+
+  // Search state for searchable comboboxes
+  const [categorySearchQuery, setCategorySearchQuery] = useState("");
+  const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+  const [reviewProductSearch, setReviewProductSearch] = useState("");
+  const [showReviewProductDropdown, setShowReviewProductDropdown] = useState(false);
 
   // Open Product Modal for Create
   const handleOpenCreateProduct = () => {
@@ -627,7 +635,7 @@ export default function AdminPage() {
 
     setIsSavingReview(true);
     try {
-      await addReview(selectedProductForReview, {
+      await addAdminReview(selectedProductForReview, {
         reviewerName: reviewForm.reviewerName.trim(),
         verified: reviewForm.verified,
         rating: reviewForm.rating,
@@ -640,8 +648,10 @@ export default function AdminPage() {
         mediaThumbnail: reviewForm.mediaUrl ? reviewForm.mediaUrl : undefined,
       });
 
-      showToast("Review submitted successfully and saved to database!", "success");
+      showToast("Review published & approved successfully!", "success");
       setIsReviewModalOpen(false);
+      setReviewProductSearch("");
+      setShowReviewProductDropdown(false);
       setReviewForm({
         reviewerName: "",
         verified: true,
@@ -660,6 +670,7 @@ export default function AdminPage() {
       setIsSavingReview(false);
     }
   };
+
 
   const handleUpdateReviewStatus = async (productId: string, reviewId: string, status: ProductReview["status"]) => {
     try {
@@ -822,16 +833,21 @@ export default function AdminPage() {
   const mostViewedItems = topSellingItems;
   const mostClickedItems = topSellingItems;
 
-  // Real Summary Totals
-  const totalReportUnitsSold = filteredReportOrders
-    .filter((o) => o.status !== "Cancelled")
+  // Real Summary Totals for selected timeframe
+  const reportNonCancelledOrders = filteredReportOrders.filter((o) => o.status !== "Cancelled");
+  const reportAusOrders = reportNonCancelledOrders.filter((o) => !isOrderSriLankan(o));
+  const reportSlOrders = reportNonCancelledOrders.filter((o) => isOrderSriLankan(o));
+
+  const reportAusRevenueAUD = reportAusOrders.reduce((sum, o) => sum + (Number(o.totalAUD) || 0), 0);
+  const reportSlRevenueAUD = reportSlOrders.reduce((sum, o) => sum + (Number(o.totalAUD) || 0), 0);
+  const reportSlRevenueLKR = Math.round(reportSlRevenueAUD * AUD_TO_LKR_RATE);
+
+  const totalReportUnitsSold = reportNonCancelledOrders
     .reduce((sum, o) => sum + o.items.reduce((s, i) => s + i.quantity, 0), 0);
 
-  const totalReportRevenueAUD = filteredReportOrders
-    .filter((o) => o.status !== "Cancelled")
-    .reduce((sum, o) => sum + (Number(o.totalAUD) || 0), 0);
+  const totalReportRevenueAUD = reportAusRevenueAUD + reportSlRevenueAUD;
 
-  const totalReportOrders = filteredReportOrders.filter((o) => o.status !== "Cancelled").length;
+  const totalReportOrders = reportNonCancelledOrders.length;
 
   // CSV Export
   const handleExportCSV = () => {
@@ -1125,73 +1141,65 @@ export default function AdminPage() {
             <div className="space-y-8 animate-fadeIn">
               {/* Stat Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+                {/* Card 1: Australia Sales */}
                 <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg flex flex-col justify-between">
                   <div className="flex items-center justify-between text-neutral-400 mb-2">
-                    <span className="text-xs uppercase tracking-wider font-medium">Total Sales</span>
+                    <span className="text-xs uppercase tracking-wider font-medium flex items-center gap-1.5">
+                      <span>🇦🇺</span> Australia Sales
+                    </span>
                     <DollarSign size={18} className="text-emerald-400" />
                   </div>
-                  <div className="space-y-1.5 py-1">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-neutral-400 flex items-center gap-1 font-mono">
-                        <span>🇦🇺</span> AUD
-                      </span>
-                      <span className="text-xl font-serif font-bold text-white">
-                        AUD ${ausRevenueAUD.toFixed(2)}
-                      </span>
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-neutral-400 flex items-center gap-1 font-mono">
-                        <span>🇱🇰</span> LKR
-                      </span>
-                      <span className="text-xl font-serif font-bold text-emerald-400">
-                        LKR {slRevenueLKR.toLocaleString()}
-                      </span>
-                    </div>
+                  <div className="text-2xl font-serif font-bold text-white my-1">
+                    AUD ${ausRevenueAUD.toFixed(2)}
                   </div>
-                  <div className="text-[11px] text-neutral-400 mt-2 flex items-center justify-between border-t border-neutral-800/80 pt-2">
-                    <span>{ausOrders.length} AU • {slOrders.length} LK orders</span>
-                    <span className="text-emerald-400 flex items-center gap-1">
-                      <TrendingUp size={11} /> +18.4%
-                    </span>
+                  <div className="text-[11px] text-neutral-400 mt-2 border-t border-neutral-800/80 pt-2 flex items-center justify-between">
+                    <span>{ausOrders.length} Australia orders</span>
+                    <span className="text-neutral-500 font-mono text-[10px]">AUD ($)</span>
                   </div>
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg">
+                {/* Card 2: Sri Lanka Sales */}
+                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg flex flex-col justify-between">
+                  <div className="flex items-center justify-between text-neutral-400 mb-2">
+                    <span className="text-xs uppercase tracking-wider font-medium flex items-center gap-1.5">
+                      <span>🇱🇰</span> Sri Lanka Sales
+                    </span>
+                    <DollarSign size={18} className="text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-serif font-bold text-emerald-400 my-1">
+                    LKR {slRevenueLKR.toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-neutral-400 mt-2 border-t border-neutral-800/80 pt-2 flex items-center justify-between">
+                    <span>{slOrders.length} Sri Lanka orders</span>
+                    <span className="text-neutral-500 font-mono text-[10px]">LKR (Rs)</span>
+                  </div>
+                </div>
+
+                {/* Card 3: Total Orders */}
+                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg flex flex-col justify-between">
                   <div className="flex items-center justify-between text-neutral-400 mb-2">
                     <span className="text-xs uppercase tracking-wider font-medium">Total Orders</span>
                     <ShoppingBag size={18} className="text-blue-400" />
                   </div>
-                  <div className="text-2xl font-serif font-bold text-white">
+                  <div className="text-2xl font-serif font-bold text-white my-1">
                     {totalOrdersCount}
                   </div>
-                  <div className="text-[11px] text-neutral-400 mt-2">
+                  <div className="text-[11px] text-neutral-400 mt-2 border-t border-neutral-800/80 pt-2">
                     <span className="text-yellow-400 font-medium">{pendingOrdersCount} requiring fulfillment</span>
                   </div>
                 </div>
 
-                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg">
+                {/* Card 4: Active Products */}
+                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg flex flex-col justify-between">
                   <div className="flex items-center justify-between text-neutral-400 mb-2">
                     <span className="text-xs uppercase tracking-wider font-medium">Active Products</span>
                     <Shirt size={18} className="text-purple-400" />
                   </div>
-                  <div className="text-2xl font-serif font-bold text-white">
+                  <div className="text-2xl font-serif font-bold text-white my-1">
                     {products.length}
                   </div>
-                  <div className="text-[11px] text-neutral-400 mt-2">
+                  <div className="text-[11px] text-neutral-400 mt-2 border-t border-neutral-800/80 pt-2">
                     <span>Across {categories.length} categories</span>
-                  </div>
-                </div>
-
-                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg">
-                  <div className="flex items-center justify-between text-neutral-400 mb-2">
-                    <span className="text-xs uppercase tracking-wider font-medium">Average Rating</span>
-                    <Star size={18} className="text-amber-400 fill-amber-400" />
-                  </div>
-                  <div className="text-2xl font-serif font-bold text-white">
-                    {averageStoreRating} <span className="text-sm text-neutral-500 font-normal">/ 5.0</span>
-                  </div>
-                  <div className="text-[11px] text-neutral-400 mt-2">
-                    <span>{allReviewsList.length} verified customer reviews</span>
                   </div>
                 </div>
               </div>
@@ -2077,13 +2085,63 @@ export default function AdminPage() {
                     <Download size={14} />
                     <span className="hidden sm:inline">Export CSV</span>
                   </button>
+
+                  <button
+                    onClick={async () => {
+                      if (!confirm("This will permanently delete ALL analytics data (page views, clicks, add-to-bag events). This is irreversible. Continue?")) return;
+                      try {
+                        await analyticsApi.clear();
+                        setAnalyticsMap({});
+                        showToast("Analytics data cleared successfully.", "success");
+                      } catch {
+                        showToast("Failed to clear analytics data.", "error");
+                      }
+                    }}
+                    className="bg-red-950/60 hover:bg-red-900/60 text-red-300 border border-red-800/60 hover:border-red-600 px-3.5 py-2 rounded text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                    title="Delete all analytics tracking data"
+                  >
+                    <Trash2 size={14} />
+                    <span className="hidden sm:inline">Clear Analytics</span>
+                  </button>
                 </div>
               </div>
 
               {/* 4 Summary Stat Cards */}
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
                 
-                {/* Total Orders Card */}
+                {/* Card 1: Australia Revenue */}
+                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
+                  <div className="flex justify-between items-center text-neutral-400">
+                    <span className="text-[11px] uppercase tracking-wider font-mono flex items-center gap-1.5">
+                      <span>🇦🇺</span> Australia Revenue
+                    </span>
+                    <DollarSign size={16} className="text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-mono font-bold text-white">
+                    AUD ${reportAusRevenueAUD.toFixed(2)}
+                  </div>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    {reportAusOrders.length} AU order{reportAusOrders.length !== 1 ? "s" : ""} in period
+                  </div>
+                </div>
+
+                {/* Card 2: Sri Lanka Revenue */}
+                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
+                  <div className="flex justify-between items-center text-neutral-400">
+                    <span className="text-[11px] uppercase tracking-wider font-mono flex items-center gap-1.5">
+                      <span>🇱🇰</span> Sri Lanka Revenue
+                    </span>
+                    <DollarSign size={16} className="text-emerald-400" />
+                  </div>
+                  <div className="text-2xl font-mono font-bold text-emerald-400">
+                    LKR {reportSlRevenueLKR.toLocaleString()}
+                  </div>
+                  <div className="text-[11px] text-neutral-400 font-mono">
+                    {reportSlOrders.length} LK order{reportSlOrders.length !== 1 ? "s" : ""} in period
+                  </div>
+                </div>
+
+                {/* Card 3: Total Orders Card */}
                 <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-neutral-400">
                     <span className="text-[11px] uppercase tracking-wider font-mono">Total Orders</span>
@@ -2097,23 +2155,7 @@ export default function AdminPage() {
                   </div>
                 </div>
 
-                {/* Avg Order Value Card */}
-                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
-                  <div className="flex justify-between items-center text-neutral-400">
-                    <span className="text-[11px] uppercase tracking-wider font-mono">Avg Order Value</span>
-                    <TrendingUp size={16} className="text-purple-400" />
-                  </div>
-                  <div className="text-2xl font-mono font-bold text-white">
-                    {totalReportOrders > 0
-                      ? `AUD $${(totalReportRevenueAUD / totalReportOrders).toFixed(2)}`
-                      : "—"}
-                  </div>
-                  <div className="text-[11px] text-neutral-400 font-mono">
-                    Per completed order
-                  </div>
-                </div>
-
-                {/* Units Sold Card */}
+                {/* Card 4: Units Sold Card */}
                 <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
                   <div className="flex justify-between items-center text-neutral-400">
                     <span className="text-[11px] uppercase tracking-wider font-mono">Total Units Sold</span>
@@ -2124,27 +2166,6 @@ export default function AdminPage() {
                   </div>
                   <div className="text-[11px] text-neutral-400 font-mono">
                     Across {products.length} product{products.length !== 1 ? "s" : ""}
-                  </div>
-                </div>
-
-                {/* Gross Revenue Card */}
-                <div className="bg-neutral-900 border border-neutral-800 p-5 rounded-lg space-y-2">
-                  <div className="flex justify-between items-center text-neutral-400">
-                    <span className="text-[11px] uppercase tracking-wider font-mono">Gross Sales Revenue</span>
-                    <DollarSign size={16} className="text-emerald-400" />
-                  </div>
-                  <div className="space-y-1">
-                    <div className="text-lg font-mono font-bold text-white flex items-center justify-between">
-                      <span className="text-xs text-neutral-400 font-sans">🇦🇺 AUD</span>
-                      <span>AUD ${ausRevenueAUD.toFixed(2)}</span>
-                    </div>
-                    <div className="text-lg font-mono font-bold text-emerald-400 flex items-center justify-between">
-                      <span className="text-xs text-neutral-400 font-sans">🇱🇰 LKR</span>
-                      <span>LKR {slRevenueLKR.toLocaleString()}</span>
-                    </div>
-                  </div>
-                  <div className="text-[11px] text-neutral-400 font-mono pt-1 border-t border-neutral-800">
-                    {ausOrders.length} AU • {slOrders.length} LK orders
                   </div>
                 </div>
 
@@ -2253,7 +2274,39 @@ export default function AdminPage() {
                       </p>
                     </div>
                   </div>
-                  <span className="text-xs font-mono text-neutral-500 uppercase">Live Tracking Data</span>
+                  <div className="flex items-center space-x-2">
+                    <span className="text-[11px] font-mono text-neutral-400 mr-1 hidden sm:inline">Sort:</span>
+                    <button
+                      onClick={() => setEngagementSort("views")}
+                      className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                        engagementSort === "views"
+                          ? "bg-white text-black font-bold"
+                          : "bg-neutral-800 text-neutral-300 hover:text-white"
+                      }`}
+                    >
+                      Most Viewed
+                    </button>
+                    <button
+                      onClick={() => setEngagementSort("clicks")}
+                      className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                        engagementSort === "clicks"
+                          ? "bg-purple-600 text-white font-bold"
+                          : "bg-neutral-800 text-neutral-300 hover:text-white"
+                      }`}
+                    >
+                      Most Clicked
+                    </button>
+                    <button
+                      onClick={() => setEngagementSort("addToBag")}
+                      className={`px-2.5 py-1 text-xs rounded font-medium transition-colors ${
+                        engagementSort === "addToBag"
+                          ? "bg-emerald-600 text-white font-bold"
+                          : "bg-neutral-800 text-neutral-300 hover:text-white"
+                      }`}
+                    >
+                      Most Added
+                    </button>
+                  </div>
                 </div>
 
                 {Object.keys(analyticsMap).length === 0 ? (
@@ -2271,9 +2324,30 @@ export default function AdminPage() {
                         <tr>
                           <th className="py-3 px-4 font-semibold w-12 text-center">Rank</th>
                           <th className="py-3 px-4 font-semibold">Product</th>
-                          <th className="py-3 px-4 font-semibold text-right">Page Views</th>
-                          <th className="py-3 px-4 font-semibold text-right">Clicks</th>
-                          <th className="py-3 px-4 font-semibold text-right">Add to Bag</th>
+                          <th
+                            className={`py-3 px-4 font-semibold text-right cursor-pointer transition-colors ${
+                              engagementSort === "views" ? "text-white underline underline-offset-4 font-bold" : "hover:text-neutral-200"
+                            }`}
+                            onClick={() => setEngagementSort("views")}
+                          >
+                            Page Views {engagementSort === "views" ? "▼" : ""}
+                          </th>
+                          <th
+                            className={`py-3 px-4 font-semibold text-right cursor-pointer transition-colors ${
+                              engagementSort === "clicks" ? "text-purple-400 underline underline-offset-4 font-bold" : "hover:text-purple-300"
+                            }`}
+                            onClick={() => setEngagementSort("clicks")}
+                          >
+                            Clicks {engagementSort === "clicks" ? "▼" : ""}
+                          </th>
+                          <th
+                            className={`py-3 px-4 font-semibold text-right cursor-pointer transition-colors ${
+                              engagementSort === "addToBag" ? "text-emerald-400 underline underline-offset-4 font-bold" : "hover:text-emerald-300"
+                            }`}
+                            onClick={() => setEngagementSort("addToBag")}
+                          >
+                            Add to Bag {engagementSort === "addToBag" ? "▼" : ""}
+                          </th>
                           <th className="py-3 px-4 font-semibold text-center">Conversion</th>
                         </tr>
                       </thead>
@@ -2283,7 +2357,11 @@ export default function AdminPage() {
                             product: prod,
                             stats: analyticsMap[prod.id] || { views: 0, clicks: 0, addToBag: 0 },
                           }))
-                          .sort((a, b) => b.stats.views - a.stats.views)
+                          .sort((a, b) => {
+                            if (engagementSort === "clicks") return b.stats.clicks - a.stats.clicks;
+                            if (engagementSort === "addToBag") return b.stats.addToBag - a.stats.addToBag;
+                            return b.stats.views - a.stats.views;
+                          })
                           .map((item, idx) => {
                             const img = item.product.colors[0]?.images[0] || item.product.colors[0]?.swatchImage;
                             const convPct = item.stats.views > 0
@@ -2584,17 +2662,56 @@ export default function AdminPage() {
                   <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1.5">
                     Category
                   </label>
-                  <select
-                    value={productForm.category || "Shirts"}
-                    onChange={(e) => setProductForm({ ...productForm, category: e.target.value })}
-                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:border-neutral-500 focus:outline-none"
-                  >
-                    {categories.map((c) => (
-                      <option key={c.id} value={c.title}>
-                        {c.title}
-                      </option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={categorySearchQuery || productForm.category || ""}
+                      onFocus={() => {
+                        setCategorySearchQuery(productForm.category || "");
+                        setShowCategoryDropdown(true);
+                      }}
+                      onBlur={() => setTimeout(() => setShowCategoryDropdown(false), 150)}
+                      onChange={(e) => {
+                        setCategorySearchQuery(e.target.value);
+                        setShowCategoryDropdown(true);
+                      }}
+                      placeholder="Search category..."
+                      className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:border-neutral-500 focus:outline-none"
+                    />
+                    {showCategoryDropdown && (
+                      <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded shadow-xl max-h-48 overflow-y-auto">
+                        {categories
+                          .filter((c) =>
+                            !categorySearchQuery ||
+                            c.title.toLowerCase().includes(categorySearchQuery.toLowerCase())
+                          )
+                          .map((c) => (
+                            <button
+                              key={c.id}
+                              type="button"
+                              onMouseDown={() => {
+                                setProductForm({ ...productForm, category: c.title });
+                                setCategorySearchQuery(c.title);
+                                setShowCategoryDropdown(false);
+                              }}
+                              className={`w-full text-left px-3 py-2.5 text-xs hover:bg-neutral-800 transition-colors ${
+                                productForm.category === c.title
+                                  ? "text-white font-semibold bg-neutral-800"
+                                  : "text-neutral-300"
+                              }`}
+                            >
+                              {c.title}
+                            </button>
+                          ))}
+                        {categories.filter((c) =>
+                          !categorySearchQuery ||
+                          c.title.toLowerCase().includes(categorySearchQuery.toLowerCase())
+                        ).length === 0 && (
+                          <div className="px-3 py-2 text-xs text-neutral-500">No categories found</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
 
                 <div>
@@ -3562,18 +3679,60 @@ export default function AdminPage() {
                 <label className="block uppercase tracking-wider text-[11px] font-semibold text-neutral-300 mb-1">
                   Target Product *
                 </label>
-                <select
-                  required
-                  value={selectedProductForReview}
-                  onChange={(e) => setSelectedProductForReview(e.target.value)}
-                  className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:outline-none"
-                >
-                  {products.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({p.id})
-                    </option>
-                  ))}
-                </select>
+                <div className="relative">
+                  <input
+                    type="text"
+                    required
+                    placeholder="Search product by name..."
+                    value={reviewProductSearch || (allProducts.find(p => p.id === selectedProductForReview)?.name ?? "")}
+                    onFocus={() => {
+                      setReviewProductSearch(allProducts.find(p => p.id === selectedProductForReview)?.name ?? "");
+                      setShowReviewProductDropdown(true);
+                    }}
+                    onBlur={() => setTimeout(() => setShowReviewProductDropdown(false), 150)}
+                    onChange={(e) => {
+                      setReviewProductSearch(e.target.value);
+                      setShowReviewProductDropdown(true);
+                    }}
+                    className="w-full bg-neutral-950 border border-neutral-800 rounded p-2.5 text-white focus:outline-none focus:border-neutral-500"
+                  />
+                  {showReviewProductDropdown && (
+                    <div className="absolute z-50 top-full left-0 right-0 mt-1 bg-neutral-900 border border-neutral-700 rounded shadow-xl max-h-52 overflow-y-auto">
+                      {allProducts
+                        .filter((p) =>
+                          !reviewProductSearch ||
+                          p.name.toLowerCase().includes(reviewProductSearch.toLowerCase()) ||
+                          p.id.toLowerCase().includes(reviewProductSearch.toLowerCase())
+                        )
+                        .map((p) => (
+                          <button
+                            key={p.id}
+                            type="button"
+                            onMouseDown={() => {
+                              setSelectedProductForReview(p.id);
+                              setReviewProductSearch(p.name);
+                              setShowReviewProductDropdown(false);
+                            }}
+                            className={`w-full text-left px-3 py-2.5 text-xs transition-colors hover:bg-neutral-800 ${
+                              selectedProductForReview === p.id
+                                ? "bg-neutral-800 text-white font-semibold"
+                                : "text-neutral-300"
+                            }`}
+                          >
+                            <span className="block font-medium">{p.name}</span>
+                            <span className="block text-[10px] text-neutral-500 font-mono">{p.id} · {p.category}</span>
+                          </button>
+                        ))}
+                      {allProducts.filter((p) =>
+                        !reviewProductSearch ||
+                        p.name.toLowerCase().includes(reviewProductSearch.toLowerCase()) ||
+                        p.id.toLowerCase().includes(reviewProductSearch.toLowerCase())
+                      ).length === 0 && (
+                        <div className="px-3 py-2 text-xs text-neutral-500">No products found</div>
+                      )}
+                    </div>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

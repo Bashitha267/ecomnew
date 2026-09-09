@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useCurrency, Currency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
 import { useAuth } from "../context/AuthContext";
+import { setCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
 import {
   User,
   Search,
@@ -169,9 +170,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                     onClick={() => {
                       setSelectedCountry("Australia");
                       setCurrency("AUD");
+                      setCookie(COUNTRY_COOKIE_NAME, "Australia", 365);
+                      setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
                       if (typeof window !== "undefined") {
-                        localStorage.setItem("cv_selected_country", "Australia");
-                        localStorage.setItem("cv_country_selected", "true");
+                        localStorage.setItem(COUNTRY_COOKIE_NAME, "Australia");
+                        localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
                       }
                       setIsCurrencyOpen(false);
                     }}
@@ -193,9 +196,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                     onClick={() => {
                       setSelectedCountry("Sri Lanka");
                       setCurrency("LKR");
+                      setCookie(COUNTRY_COOKIE_NAME, "Sri Lanka", 365);
+                      setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
                       if (typeof window !== "undefined") {
-                        localStorage.setItem("cv_selected_country", "Sri Lanka");
-                        localStorage.setItem("cv_country_selected", "true");
+                        localStorage.setItem(COUNTRY_COOKIE_NAME, "Sri Lanka");
+                        localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
                       }
                       setIsCurrencyOpen(false);
                     }}
@@ -412,9 +417,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                   onClick={() => {
                     setSelectedCountry("Australia");
                     setCurrency("AUD");
+                    setCookie(COUNTRY_COOKIE_NAME, "Australia", 365);
+                    setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
                     if (typeof window !== "undefined") {
-                      localStorage.setItem("cv_selected_country", "Australia");
-                      localStorage.setItem("cv_country_selected", "true");
+                      localStorage.setItem(COUNTRY_COOKIE_NAME, "Australia");
+                      localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
                     }
                   }}
                   className={`px-3 py-2 border text-left flex items-center space-x-2 transition-colors ${
@@ -430,9 +437,11 @@ export const Navbar: React.FC<NavbarProps> = ({ onNavClick }) => {
                   onClick={() => {
                     setSelectedCountry("Sri Lanka");
                     setCurrency("LKR");
+                    setCookie(COUNTRY_COOKIE_NAME, "Sri Lanka", 365);
+                    setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
                     if (typeof window !== "undefined") {
-                      localStorage.setItem("cv_selected_country", "Sri Lanka");
-                      localStorage.setItem("cv_country_selected", "true");
+                      localStorage.setItem(COUNTRY_COOKIE_NAME, "Sri Lanka");
+                      localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
                     }
                   }}
                   className={`px-3 py-2 border text-left flex items-center space-x-2 transition-colors ${

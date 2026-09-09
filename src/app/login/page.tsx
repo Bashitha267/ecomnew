@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useAuth } from "../../context/AuthContext";
 import { useStore } from "../../context/StoreContext";
+import { getCookie, COUNTRY_COOKIE_NAME } from "../../lib/cookies";
 import {
   Lock,
   User,
@@ -35,7 +36,9 @@ export default function LoginPage() {
   const [address, setAddress] = useState("");
   const [country, setCountry] = useState<"Australia" | "Sri Lanka">(() => {
     if (typeof window !== "undefined") {
-      const cached = localStorage.getItem("cv_selected_country");
+      const cookieVal = getCookie(COUNTRY_COOKIE_NAME);
+      if (cookieVal === "Sri Lanka" || cookieVal === "Australia") return cookieVal;
+      const cached = localStorage.getItem(COUNTRY_COOKIE_NAME);
       if (cached === "Sri Lanka" || cached === "Australia") return cached;
     }
     return "Australia";
@@ -90,8 +93,8 @@ export default function LoginPage() {
 
       setSuccessMessage(`Welcome to Carlton Valley Atelier, ${fullName.trim()}. Profile created for ${country}.`);
       setTimeout(() => {
-        window.location.href = "/";
-      }, 500);
+        router.push("/");
+      }, 300);
       return;
     }
 
@@ -106,13 +109,13 @@ export default function LoginPage() {
     if (result.role === "admin") {
       setSuccessMessage("Welcome, Administrator. Entering Atelier Control...");
       setTimeout(() => {
-        window.location.href = "/admin";
-      }, 400);
+        router.push("/admin");
+      }, 300);
     } else {
       setSuccessMessage(`Welcome back, ${result.name}. Loading boutique...`);
       setTimeout(() => {
-        window.location.href = "/";
-      }, 400);
+        router.push("/");
+      }, 300);
     }
   };
 

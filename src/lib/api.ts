@@ -219,6 +219,8 @@ export const reviewsApi = {
     api.get('/api/reviews', { params }),
   submit: (data: Record<string, unknown>) =>
     api.post('/api/reviews', data),
+  adminSubmit: (data: Record<string, unknown>) =>
+    api.post('/api/reviews/admin', data),
   updateStatus: (id: string, status: 'approved' | 'rejected' | 'pending') =>
     api.patch(`/api/reviews/${id}/status`, { status }),
   delete: (id: string) =>
@@ -260,6 +262,12 @@ export const analyticsApi = {
       success: boolean;
       data: Record<string, { views: number; clicks: number; addToBag: number }>;
     }>('/api/analytics/summary', { params: { days } }),
+
+  /**
+   * Admin: clear all analytics data (wipe product_views table).
+   */
+  clear: () =>
+    api.delete<{ success: boolean; message: string }>('/api/analytics/clear'),
 };
 
 // HOMEPAGE VIDEOS

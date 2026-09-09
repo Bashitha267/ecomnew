@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import { useStore } from "../context/StoreContext";
 import { useCurrency } from "../context/CurrencyContext";
 import { useAuth } from "../context/AuthContext";
+import { setCookie, getCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
 import { Globe, ArrowRight } from "lucide-react";
 
 export const CountrySelectModal: React.FC = () => {
@@ -32,16 +33,21 @@ export const CountrySelectModal: React.FC = () => {
       return;
     }
 
-    // Rule 3: First check if we saved the country in cache
-    const cachedCountry = typeof window !== "undefined" ? localStorage.getItem("cv_selected_country") : null;
-    const hasChosen = typeof window !== "undefined" ? localStorage.getItem("cv_country_selected") : null;
+    // Rule 3: Check if country preference is already stored in cookies or localStorage
+    const cookieCountry = getCookie(COUNTRY_COOKIE_NAME);
+    const cookieChosen = getCookie(COUNTRY_CHOSEN_COOKIE_NAME);
+    const cachedCountry = typeof window !== "undefined" ? localStorage.getItem(COUNTRY_COOKIE_NAME) : null;
+    const hasChosen = typeof window !== "undefined" ? localStorage.getItem(COUNTRY_CHOSEN_COOKIE_NAME) : null;
 
-    if (cachedCountry === "Australia" || cachedCountry === "Sri Lanka" || hasChosen === "true") {
+    const chosen = cookieChosen === "true" || hasChosen === "true";
+    const country = cookieCountry || cachedCountry;
+
+    if (chosen && (country === "Australia" || country === "Sri Lanka")) {
       setIsOpen(false);
       return;
     }
 
-    // Else: Immediately show the modal tab asking which country!
+    // Else: Immediately show the modal asking to select country first!
     setIsOpen(true);
   }, [isAuthenticated, authLoading, pathname]);
 
@@ -50,10 +56,17 @@ export const CountrySelectModal: React.FC = () => {
   const handleSelectCountry = (country: "Australia" | "Sri Lanka") => {
     setSelectedCountry(country);
     setCurrency(country === "Australia" ? "AUD" : "LKR");
+
+    // Store in cookie (365 days / 1 year)
+    setCookie(COUNTRY_COOKIE_NAME, country, 365);
+    setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+
+    // Also keep in localStorage for backwards compatibility
     if (typeof window !== "undefined") {
-      localStorage.setItem("cv_selected_country", country);
-      localStorage.setItem("cv_country_selected", "true");
+      localStorage.setItem(COUNTRY_COOKIE_NAME, country);
+      localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
     }
+
     setIsOpen(false);
   };
 

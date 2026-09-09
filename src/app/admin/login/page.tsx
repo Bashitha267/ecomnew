@@ -34,8 +34,8 @@ export default function AdminLoginPage() {
     if (result.role === "admin") {
       setSuccessMessage("Authentication successful. Redirecting to Admin Dashboard...");
       setTimeout(() => {
-        window.location.href = "/admin";
-      }, 500);
+        router.push("/admin");
+      }, 300);
     } else {
       setErrorMessage("Access denied. This portal is for administrators only.");
       setIsLoading(false);

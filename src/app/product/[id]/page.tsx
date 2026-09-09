@@ -65,6 +65,12 @@ export default function ProductDetailPage({ params }: PageProps) {
     mediaUrl: "",
   });
 
+  // Review submission state
+  const [reviewSubmitState, setReviewSubmitState] = useState<
+    "idle" | "submitting" | "success" | "error"
+  >("idle");
+  const [reviewSubmitError, setReviewSubmitError] = useState("");
+
   // ── Analytics: fire a 'view' event once when the product page loads ──────
   useEffect(() => {
     if (product?.id) {
@@ -105,36 +111,44 @@ export default function ProductDetailPage({ params }: PageProps) {
     setTimeout(() => setIsAddedToBag(false), 2500);
   };
 
-  const handlePostReview = (e: React.FormEvent) => {
+  const handlePostReview = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReview.reviewerName || !newReview.comment) {
       alert("Please fill in reviewer name and feedback comment");
       return;
     }
 
-    addReview(product.id, {
-      reviewerName: newReview.reviewerName,
-      verified: true,
-      rating: newReview.rating,
-      title: newReview.title,
-      comment: newReview.comment,
-      itemSize: newReview.itemSize,
-      itemColor: currentColor.name,
-      mediaType: newReview.mediaUrl ? newReview.mediaType : undefined,
-      mediaUrl: newReview.mediaUrl || undefined,
-      mediaThumbnail: newReview.mediaUrl ? newReview.mediaUrl : undefined,
-    });
+    setReviewSubmitState("submitting");
+    setReviewSubmitError("");
 
-    setIsWriteReviewOpen(false);
-    setNewReview({
-      reviewerName: "",
-      rating: 5,
-      title: "",
-      comment: "",
-      itemSize: "M",
-      mediaType: "video",
-      mediaUrl: "",
-    });
+    try {
+      await addReview(product.id, {
+        reviewerName: newReview.reviewerName,
+        verified: false,
+        rating: newReview.rating,
+        title: newReview.title,
+        comment: newReview.comment,
+        itemSize: newReview.itemSize,
+        itemColor: currentColor.name,
+        mediaType: newReview.mediaUrl ? newReview.mediaType : undefined,
+        mediaUrl: newReview.mediaUrl || undefined,
+        mediaThumbnail: newReview.mediaUrl ? newReview.mediaUrl : undefined,
+      });
+
+      setReviewSubmitState("success");
+      setNewReview({
+        reviewerName: "",
+        rating: 5,
+        title: "",
+        comment: "",
+        itemSize: "M",
+        mediaType: "video",
+        mediaUrl: "",
+      });
+    } catch {
+      setReviewSubmitState("error");
+      setReviewSubmitError("Failed to submit review. Please try again.");
+    }
   };
 
   // Other related products
@@ -778,25 +792,61 @@ export default function ProductDetailPage({ params }: PageProps) {
                 </div>
               </div>
 
-              <div className="flex justify-end space-x-2 pt-2 border-t border-neutral-200">
-                <button
-                  type="button"
-                  onClick={() => setIsWriteReviewOpen(false)}
-                  className="px-4 py-2 text-neutral-500 hover:text-black uppercase tracking-wider"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="bg-black text-white px-6 py-2.5 uppercase tracking-widest font-bold hover:bg-neutral-800"
-                >
-                  Submit Review
-                </button>
-              </div>
+              {/* Error feedback */}
+              {reviewSubmitState === "error" && (
+                <p className="text-red-600 text-xs font-medium">{reviewSubmitError}</p>
+              )}
+
+              {/* Success state */}
+              {reviewSubmitState === "success" ? (
+                <div className="pt-4 border-t border-neutral-200 text-center space-y-3">
+                  <div className="text-emerald-600 font-semibold text-sm">✓ Review Submitted!</div>
+                  <p className="text-neutral-500 text-xs">
+                    Thank you! Your review has been received and will appear after approval.
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWriteReviewOpen(false);
+                      setReviewSubmitState("idle");
+                    }}
+                    className="bg-black text-white px-6 py-2 uppercase tracking-widest font-bold text-xs hover:bg-neutral-800"
+                  >
+                    Close
+                  </button>
+                </div>
+              ) : (
+                <div className="flex justify-end space-x-2 pt-2 border-t border-neutral-200">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsWriteReviewOpen(false);
+                      setReviewSubmitState("idle");
+                    }}
+                    className="px-4 py-2 text-neutral-500 hover:text-black uppercase tracking-wider"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={reviewSubmitState === "submitting"}
+                    className="bg-black text-white px-6 py-2.5 uppercase tracking-widest font-bold hover:bg-neutral-800 disabled:opacity-60 flex items-center space-x-2"
+                  >
+                    {reviewSubmitState === "submitting" && (
+                      <svg className="animate-spin w-3.5 h-3.5" viewBox="0 0 24 24" fill="none">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8z" />
+                      </svg>
+                    )}
+                    <span>{reviewSubmitState === "submitting" ? "Submitting..." : "Submit Review"}</span>
+                  </button>
+                </div>
+              )}
             </form>
           </div>
         </div>
       )}
+
 
       {/* SIZE CHART MODAL */}
       {isSizeChartOpen && (

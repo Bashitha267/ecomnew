@@ -7,6 +7,7 @@ import {
   ProductReview,
 } from "../data/data";
 import { productsApi, ordersApi, categoriesApi, reviewsApi, getApiError } from "../lib/api";
+import { setCookie, getCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
 import { useAuth } from "./AuthContext";
 
 export interface CartItem {
@@ -63,6 +64,7 @@ interface StoreContextType {
 
   // Reviews
   addReview: (productId: string, review: Omit<ProductReview, "id" | "date" | "status">) => Promise<void>;
+  addAdminReview: (productId: string, review: Omit<ProductReview, "id" | "date" | "status">) => Promise<void>;
   updateReviewStatus: (productId: string, reviewId: string, status: ProductReview["status"]) => Promise<void>;
   deleteReview: (productId: string, reviewId: string) => Promise<void>;
 
@@ -80,7 +82,9 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [selectedCountry, setSelectedCountryState] = useState<"Australia" | "Sri Lanka">(() => {
     if (typeof window !== "undefined") {
       try {
-        const saved = localStorage.getItem("cv_selected_country");
+        const cookieVal = getCookie(COUNTRY_COOKIE_NAME);
+        if (cookieVal === "Sri Lanka" || cookieVal === "Australia") return cookieVal;
+        const saved = localStorage.getItem(COUNTRY_COOKIE_NAME);
         if (saved === "Sri Lanka" || saved === "Australia") return saved;
       } catch { /* ignore */ }
     }
@@ -93,17 +97,24 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [isLoading, setIsLoading]   = useState(true);
   const [error, setError]           = useState<string | null>(null);
 
-  // Sync selected country from authenticated user or localStorage
+  // Sync selected country from authenticated user or cookies/localStorage
   useEffect(() => {
     if (user?.country === "Sri Lanka" || user?.country === "Australia") {
       setSelectedCountryState(user.country);
       try {
-        localStorage.setItem("cv_selected_country", user.country);
-        localStorage.setItem("cv_country_selected", "true");
+        setCookie(COUNTRY_COOKIE_NAME, user.country, 365);
+        setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+        localStorage.setItem(COUNTRY_COOKIE_NAME, user.country);
+        localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
       } catch { /* ignore */ }
     } else {
       try {
-        const saved = localStorage.getItem("cv_selected_country");
+        const cookieVal = getCookie(COUNTRY_COOKIE_NAME);
+        if (cookieVal === "Sri Lanka" || cookieVal === "Australia") {
+          setSelectedCountryState(cookieVal);
+          return;
+        }
+        const saved = localStorage.getItem(COUNTRY_COOKIE_NAME);
         if (saved === "Sri Lanka" || saved === "Australia") {
           setSelectedCountryState(saved);
         }
@@ -114,8 +125,10 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const setSelectedCountry = useCallback((country: "Australia" | "Sri Lanka") => {
     setSelectedCountryState(country);
     try {
-      localStorage.setItem("cv_selected_country", country);
-      localStorage.setItem("cv_country_selected", "true");
+      setCookie(COUNTRY_COOKIE_NAME, country, 365);
+      setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+      localStorage.setItem(COUNTRY_COOKIE_NAME, country);
+      localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
     } catch { /* ignore */ }
   }, []);
 
@@ -256,6 +269,12 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     await refreshProducts();
   };
 
+  // Admin-posted reviews go through the /admin endpoint → auto-approved immediately
+  const addAdminReview = async (productId: string, reviewInput: Omit<ProductReview, "id" | "date" | "status">) => {
+    await reviewsApi.adminSubmit({ ...reviewInput, productId });
+    await refreshProducts();
+  };
+
   const updateReviewStatus = async (productId: string, reviewId: string, status: ProductReview["status"]) => {
     await reviewsApi.updateStatus(reviewId, status as "approved" | "rejected" | "pending");
     await refreshProducts();
@@ -313,7 +332,7 @@ export const StoreProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         addProduct, updateProduct, deleteProduct, getProductById, refreshProducts,
         addCategory, updateCategory, deleteCategory, refreshCategories,
         updateOrderStatus, addOrder, deleteOrder, refreshOrders,
-        addReview, updateReviewStatus, deleteReview,
+        addReview, addAdminReview, updateReviewStatus, deleteReview,
         resetStoreData,
       }}
     >

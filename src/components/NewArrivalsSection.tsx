@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useCurrency } from "../context/CurrencyContext";
 import { useStore } from "../context/StoreContext";
+import { analyticsApi } from "../lib/api";
 import { ChevronLeft, ChevronRight, Star } from "lucide-react";
 
 export const NewArrivalsSection: React.FC = () => {
@@ -84,6 +85,7 @@ export const NewArrivalsSection: React.FC = () => {
               <Link
                 key={product.id}
                 href={`/product/${product.id}`}
+                onClick={() => analyticsApi.track(product.id, 'click')}
                 className="group cursor-pointer flex flex-col text-center"
               >
                 {/* Product Image Container with Dual Image Hover Effect */}

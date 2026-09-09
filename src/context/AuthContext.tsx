@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from "react";
 import { authApi, tokenStore, getApiError } from "../lib/api";
+import { setCookie, COUNTRY_COOKIE_NAME, COUNTRY_CHOSEN_COOKIE_NAME } from "../lib/cookies";
 
 export interface AuthUser {
   id: string;
@@ -56,8 +57,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           const parsed = JSON.parse(cachedUser);
           setUser(parsed);
           if (parsed.country) {
-            localStorage.setItem("cv_selected_country", parsed.country);
-            localStorage.setItem("cv_country_selected", "true");
+            setCookie(COUNTRY_COOKIE_NAME, parsed.country, 365);
+            setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+            localStorage.setItem(COUNTRY_COOKIE_NAME, parsed.country);
+            localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
           }
         }
 
@@ -69,8 +72,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             setUser(data.user);
             localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
             if (data.user.country) {
-              localStorage.setItem("cv_selected_country", data.user.country);
-              localStorage.setItem("cv_country_selected", "true");
+              setCookie(COUNTRY_COOKIE_NAME, data.user.country, 365);
+              setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+              localStorage.setItem(COUNTRY_COOKIE_NAME, data.user.country);
+              localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
             }
           }
         }
@@ -102,8 +107,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
         if (data.user.country) {
-          localStorage.setItem("cv_selected_country", data.user.country);
-          localStorage.setItem("cv_country_selected", "true");
+          setCookie(COUNTRY_COOKIE_NAME, data.user.country, 365);
+          setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+          localStorage.setItem(COUNTRY_COOKIE_NAME, data.user.country);
+          localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
         }
         return { success: true, role: data.user.role, name: data.user.name };
       }
@@ -133,8 +140,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(data.user);
         localStorage.setItem(USER_CACHE_KEY, JSON.stringify(data.user));
         if (data.user.country) {
-          localStorage.setItem("cv_selected_country", data.user.country);
-          localStorage.setItem("cv_country_selected", "true");
+          setCookie(COUNTRY_COOKIE_NAME, data.user.country, 365);
+          setCookie(COUNTRY_CHOSEN_COOKIE_NAME, "true", 365);
+          localStorage.setItem(COUNTRY_COOKIE_NAME, data.user.country);
+          localStorage.setItem(COUNTRY_CHOSEN_COOKIE_NAME, "true");
         }
         return { success: true };
       }
